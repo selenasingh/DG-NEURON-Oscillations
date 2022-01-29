@@ -16,13 +16,15 @@
 // Which figure (1-5) do you want to simulate?
 // Please use the original parameters to produce the figures.
 // If you want to run the simulation with your own parameters, set fig = 0
+
+
 fig = 1
 
 // SIMULATION: parameters
 dt              = 0.1           // simulation time [ms]
 tstop           = 200           // total simulation time [ms]
-trial 		= 1             // trialnumber = seed of simulation
-trial_noise 	= 1 		// seed for noise to PP 
+trial 		      = 1             // trialnumber = seed of simulation
+trial_noise 	  = 1 		// seed for noise to PP 
 
 // NOTE: // all NetStims share the same random number generator  
 // used solution given in http://www.neuron.yale.edu/neuron/node/61
@@ -57,17 +59,17 @@ print_stim_noise = 1            // print noise to GCs for debug purpose.. (same 
 
 
 // FLAGS: Scaling
-scale_gpas_dg_  = 100           // scaling [%] of gpas of th GC model (100% in the original file)
-scale_sk_dg_    = 100           // scaling of Ca-dependent K (SK) of th GC model (100% in the original file)
-scale_kir_      = 100       	// scaling of KIR conductance in GC model
-scale_gabaa_    = 100           // scaling of GABAA in GC model
+scale_gpas_dg_       = 100    // scaling [%] of gpas of th GC model (100% in the original file)
+scale_sk_dg_         = 100    // scaling of Ca-dependent K (SK) of th GC model (100% in the original file)
+scale_kir_           = 100    // scaling of KIR conductance in GC model
+scale_gabaa_         = 100    // scaling of GABAA in GC model
 scale_PP_strength    = 10    	// scaling of synaptic weight of PP
-scale_PP2BC_strength = 100      // scaling of synaptic weight PP->BC (100% for original value which was 50% of PP->GC strength..)
-scale_PP2HC_strength = 0        // scaling of synaptic weight PP->HIPP (set to 0% for Santhakumar because there no PP->HIPP connections...)
-scale_HC2GC_strength = 100      // scaling of synaptic weight HC->GC (beta_HIPP in Myers and Scharfman, 2009)
-scale_MC2GC_strength = 100      // scaling of synaptic weight MC->GC (beta_HIPP in Myers and Scharfman, 2009)
-scale_GC2BC_strength = 300      // scaling of synaptic weight GC->BC
-scale_BC2GC_strength = 300      // scaling of synaptic weight BC->GC
+scale_PP2BC_strength = 100    // scaling of synaptic weight PP->BC (100% for original value which was 50% of PP->GC strength..)
+scale_PP2HC_strength = 0      // scaling of synaptic weight PP->HIPP (set to 0% for Santhakumar because there no PP->HIPP connections...)
+scale_HC2GC_strength = 100    // scaling of synaptic weight HC->GC (beta_HIPP in Myers and Scharfman, 2009)
+scale_MC2GC_strength = 100    // scaling of synaptic weight MC->GC (beta_HIPP in Myers and Scharfman, 2009)
+scale_GC2BC_strength = 300    // scaling of synaptic weight GC->BC
+scale_BC2GC_strength = 300    // scaling of synaptic weight BC->GC
 
 
 init_from_file_ = 0		// read in initial potential of all cells/compartments from file 
