@@ -1,4 +1,3 @@
-objref PPSt[npp], PPSt_noise[npp]
 create aacell			// artificial cell if windows (boxed) activation
 objref pp_start
 objref netcon_d[npp]

@@ -2,6 +2,8 @@
 objref cells
 cells = new List()
 
+objref PPSt[npp], PPSt_noise[npp]
+
 // Load templates
 err_ = load_file("GC.hoc")
 err_ = load_file("BC.hoc")
