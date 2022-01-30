@@ -1,0 +1,104 @@
+// SIMULATION: parameters
+dt              = 0.1           // simulation time [ms]
+tstop           = 200           // total simulation time [ms]
+trial 		    = 1             // trialnumber = seed of simulation
+trial_noise 	= 1 		    // seed for noise to PP
+rseed           = trial         // pseudorandom number generator seed
+
+// FLAGS: Input
+p_sprouted_ 	= 0 		// 10% sprouting (i.e. each GC connects to 50 other GCs randomly...) // original p = 0.02
+PP_nstimulus_ 	= 1         // number of stimulated GC (100 in original file), set to 1 to have one input per GC (e.g. uncorrelated Poisson or correlated input (Myers and Scharfman, 2009)
+PP_input2MC_  	= 0         // stimulate MC with PP
+PP_rate_        = 10.       // rate of PP Poisson input
+PP_rate_noise_  = 0.        // rate of PP Poisson noise
+PP_box_nr_      = 6         // number of active PPs
+PP_box_stop_	= 35.       // time of box [ms]
+PP_box_start_	= 5.        // shift of box [ms]
+PP_box_nspk_    = 3         // number of spike per active PP
+
+
+// FLAGS: Output
+print_Vtrace 	= 1             // print voltage trace to file
+print_Raster 	= 1             // print spike raster to file
+print_template 	= 1             // write out spike sequence into template file
+print_GC_sprouting_input_ = 0	// calculates and print out GC sprouting input number distribution
+print_stim_ 	= 1             // print stimulus to GCs for debug purpose..
+print_stim_noise = 1            // print noise to GCs for debug purpose.. (same output file as Poisson input to GCs!)
+
+
+// FLAGS: Scaling
+scale_gpas_dg_       = 100    // scaling [%] of gpas of th GC model (100% in the original file)
+scale_sk_dg_         = 100    // scaling of Ca-dependent K (SK) of th GC model (100% in the original file)
+scale_kir_           = 100    // scaling of KIR conductance in GC model
+scale_gabaa_         = 100    // scaling of GABAA in GC model
+scale_PP_strength    = 10    	// scaling of synaptic weight of PP
+scale_PP2BC_strength = 100    // scaling of synaptic weight PP->BC (100% for original value which was 50% of PP->GC strength..)
+scale_PP2HC_strength = 0      // scaling of synaptic weight PP->HIPP (set to 0% for Santhakumar because there no PP->HIPP connections...)
+scale_HC2GC_strength = 100    // scaling of synaptic weight HC->GC (beta_HIPP in Myers and Scharfman, 2009)
+scale_MC2GC_strength = 100    // scaling of synaptic weight MC->GC (beta_HIPP in Myers and Scharfman, 2009)
+scale_GC2BC_strength = 300    // scaling of synaptic weight GC->BC
+scale_BC2GC_strength = 300    // scaling of synaptic weight BC->GC
+
+
+init_from_file_ = 0		// read in initial potential of all cells/compartments from file 
+init_to_file_ 	= 0		// save potential of all cells/compartments to file @ end of run (to be used for init the network later again)
+
+strdef suffix, idname   	// define file names for simulation results output
+suffix = "txt"
+idname = "-pp10-gaba1-kir1-st0"
+
+strdef init_state_fname_
+init_state_fname_ = "NetworkState_init_10Hz.dat"
+
+// Reset parameters to generate the figures in Yim et al (2015)
+if (fig == 1) {
+    scale_PP_strength   = 10
+    scale_kir_          = 100
+    scale_gabaa_        = 100
+    p_sprouted_         = 0
+    idname = "-pp10-gaba1-kir1-st0"
+}
+
+if (fig == 2) {
+    scale_PP_strength   = 10
+    scale_kir_          = 100
+    scale_gabaa_        = 100
+    p_sprouted_         = 30
+    idname = "-pp10-gaba1-kir1-st30"
+}
+
+if (fig == 3) {
+    scale_PP_strength   = 10
+    scale_kir_          = 400
+    scale_gabaa_        = 400
+    p_sprouted_         = 30
+    idname = "-pp10-gaba4-kir4-st30"
+}
+
+if (fig == 4) {
+    scale_PP_strength   = 16
+    scale_kir_          = 100
+    scale_gabaa_        = 100
+    p_sprouted_         = 10
+    idname = "-pp16-gaba1-kir1-st10"
+}
+
+if (fig == 5) {
+    scale_PP_strength   = 16
+    scale_kir_          = 400
+    scale_gabaa_        = 400
+    p_sprouted_         = 10
+    idname = "-pp16-gaba4-kir4-st10"
+}
+// End of parameter reset
+
+// NETWORK: parameters
+ngcell 		= 500		// number of GCs 
+nbcell 		= 6         // number of BCs (6 for original Samathakumar 2005)
+nmcell 		= 15		// number of MCs	
+nhcell 		= 6         // number of HCs (6 for original Samathakumar 2005)
+npp         = 100		// 100 enorhinal layer II Neurons (Myers and Scharfman, 2009)
+
+nmcell_per_lamella = 3  // Number of mossy cells per lamella
+
+ntotal = ngcell + nbcell + nmcell + nhcell + npp + npp                         // two times npp because of PP input and PP noise...

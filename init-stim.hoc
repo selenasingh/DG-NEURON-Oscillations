@@ -1,0 +1,49 @@
+objref PPSt[npp], PPSt_noise[npp]
+create aacell			// artificial cell if windows (boxed) activation
+objref pp_start
+objref netcon_d[npp]
+
+// Define Random Generator for each PPStim object...
+print "Define Random Generator for each PPStim object..."
+
+//  nslist = new List()
+rslist = new List()
+rs_noiselist = new List()
+
+// ####### Input Window (box)
+ random_stream_offset_ = PP_rate_ * 1000
+ for i=0, npp-1 {
+      rs = new RandomStream(i)                                                                          // (stream nr)
+      rslist.append(rs)
+      PPSt[i].pp.noiseFromRandom(rs.r)
+      rs.r.uniform(0,1)                                                                            	// use uniform distribution
+      rs.start()
+ }
+ for i=0, npp-1 {
+      rs = new RandomStream(i+npp)              							// (stream nr)
+      rs_noiselist.append(rs)
+      PPSt_noise[i].pp.noiseFromRandom(rs.r)
+      rs.r.uniform(0,1)						                               		// use uniform distribution
+      rs.start()
+ }
+
+ aacell pp_start = new NetStim125(.5)   		// artificial puls to PPSt[i].pp in order to become active... 
+ pp_start.interval = 1e-5
+ pp_start.number = 1
+ pp_start.start = 0
+ pp_start.forcestop = 1.
+ pp_start.noise = 1                         
+
+ rs = new RandomStream(npp)				// assign Random Generator to init..
+ return_val_ = rslist.append(rs)			// save returned value in return_val_ to suppress screen output
+ return_val_ = pp_start.noiseFromRandom(rs.r)
+ return_val_ =  rs.r.negexp(1)
+ return_val_ = rs.start()
+
+ for i=0, npp-1 {
+     netcon_d[i] = new NetCon( pp_start,PPSt[i].pp)	 // each PPSt[i].pp needs to receive a netevent to become active...
+     netcon_d[i].weight 	= 10.			 	
+     netcon_d[i].delay 		= 0.001
+     netcon_d[i].threshold 	= 10.
+ }
+print "Finished Random Generator for each PPStim object"
