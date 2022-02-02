@@ -7,3 +7,10 @@ err_ = load_file("PP.hoc")
 
 // Load Network
 err_ = load_file("DentateGyrus.hoc")
+
+// Run network
+random_state = 1
+objref dg
+dg = new DentateGyrus("sprouted", random_state)
+dg.p_sprouted_ = 10
+dg.run()
