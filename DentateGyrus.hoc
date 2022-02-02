@@ -38,6 +38,10 @@
             init_to_file_ 	= 0		// save potential of all cells/compartments to file @ end of run (to be used for init the network later again)
 */
 
+
+// Load ranstream
+err_ = load_file("ranstream.hoc")
+
 begintemplate DentateGyrus
     // Public methods
     public init, run
@@ -50,6 +54,7 @@ begintemplate DentateGyrus
     objref rdhc2gc, rdhc2bc, rdhc2mc
     objref rnd_pp2gc, rnd_pp2bc, rnd_pp2hc
     objref rdsynb, rdsyna 
+    objref cvode
 
     // Data management related declarations 
     public VmT, VmMat, idname
@@ -69,7 +74,7 @@ begintemplate DentateGyrus
     public cells, nclist
     objref cells , Gcell[500], Bcell[6], Mcell[15], Hcell[6]
     objref PPSt[100], PPSt_noise[100]
-    objref rslist, rs_noiselist, pp_start
+    objref rs, rslist, rs_noiselist, pp_start
     objref nclist, netcon, netcon_d[100]
     objref vgc2gc, vgc2bc, vgc2mc, vgc2hc
     objref vbc2gc, vbc2bc, vbc2mc
@@ -82,15 +87,23 @@ begintemplate DentateGyrus
         /* Initialization of the DentateGyrus object
         
         Arguments: 
-            $1  : int : Which figure you are trying to generate data for
+            $s1 : str : A label for this simulation 
             $2  : int : Random state (global RNG seed)
-            $s3 : str : A label for this simulation 
         */
-        fig = $1
-        random_state = $2
-
         strdef idname
-        idname = $s3
+        idname = $s1
+        
+        fig = 1 // Will change this to be less specific for Yim et al. net
+        random_state = $2
+        
+        // Specify directory to save data
+        // [ TODO ] - Allow this to be changed optionally
+        //              without having to specify it 
+        //              every time. I.e. need to look at 
+        //              how one can specify default
+        //              arguments to functions in NEURON
+        strdef datadir
+        datadir = "data/"
 
         // Simulation and data storage parameters
         set_simulation_parameters(random_state)
@@ -130,15 +143,9 @@ begintemplate DentateGyrus
     proc set_pseudorandom_number_generators(){
         /* Create the pseudorandom number generators for the network 
 
-        Notes: 
-            - ranstream.hoc must be loaded after `set_simulation_parameters` 
-                because it depends on `trial` being set. 
-
         TODO: 
             - Pass argument to ranstream rather than requiring external
         */
-        // Load ranstream
-        err_ = load_file("ranstream.hoc")
 
         // Create RNGs for network connectivity establishment
         //  GC -> {GC, BC, MC, HC} 
@@ -344,7 +351,7 @@ begintemplate DentateGyrus
         for i = 0, npp-1 {cells.append(PPSt_noise[i])}  
     }
 
-    proc make_input_stimulation(){ local i
+    proc make_input_stimulation() { local i
         /* Creates the perforant path input stimulation objects
         */
         // Print update to console
@@ -619,7 +626,7 @@ begintemplate DentateGyrus
         print "Connecting GCs to post-synaptic targets."
 
         if (debug_ == 0) { print "n_sprout_ = ",n_sprout_ }
-        if (p_sprouted_>0 && debug_ == 2) {print "NOTE: we have sprouting connections..."}
+        if (p_sprouted_>0 && debug_ == 2) {print "\tNOTE: Implementing mossy fibre sprouting."}
 
         for  i=0, ngcell-1 {
             // CONNECT GC'S TO BC'S
@@ -1082,10 +1089,10 @@ begintemplate DentateGyrus
     proc save_network_connections(){ local i localobj dfile
         /* Writes network adjacency list to file
         */
-        print "\tWriting network connections to file."
         strdef DGNC_name_
         dfile = new File()
-        sprint (DGNC_name_, "%s-%d-%d-%s.%s", "DGNC", PP_box_startid_, PP_box_nr_, idname, suffix)
+        sprint (DGNC_name_, "%s%s-%d-%d-%s.%s", datadir, "DGNC", PP_box_startid_, PP_box_nr_, idname, suffix) 
+        print "\tWriting network connections to file: ", DGNC_name_
         dfile.wopen(DGNC_name_)
         for i=0, nclist.count-1 {
             dfile.printf("%s\t%s\n", myprecell(nclist.object(i)), nclist.object(i).postcell)
@@ -1101,8 +1108,8 @@ begintemplate DentateGyrus
 
         // [ TODO ] -- n_to_print here is not good. Needs to be an object parameter or something.
         n_to_print = 500    
-        print "\nOutput memb voltage traces of every ", ngcell/n_to_print, " GC and all other cells to file"
-        sprint (DGVt_name_,"%s-%d-%d-%s.%s", "DGVt", PP_box_startid_, PP_box_nr_, idname, suffix)
+        sprint (DGVt_name_,"%s%s-%d-%d-%s.%s", datadir, "DGVt", PP_box_startid_, PP_box_nr_, idname, suffix) 
+        print "\tWriting membrane voltage traces of all cells to file: ", DGVt_name_
         efile.wopen(DGVt_name_)
         efile.printf("# t\t")
         efile.printf("\n")
@@ -1126,7 +1133,7 @@ begintemplate DentateGyrus
 
     proc write_spike_times_to_file() { local i, j localobj spikefile
         strdef DGsp_name_
-        sprint (DGsp_name_,"%s-%d-%d-%s.%s", "DGsp", PP_box_startid_, PP_box_nr_, idname, suffix)
+        sprint (DGsp_name_,"%s%s-%d-%d-%s.%s", datadir, "DGsp", PP_box_startid_, PP_box_nr_, idname, suffix)
         print "\tWriting spike times to file: ", DGsp_name_ 
         spikefile = new File()
         spikefile.wopen(DGsp_name_)
@@ -1148,7 +1155,7 @@ begintemplate DentateGyrus
         */
         stimfile = new File()
         strdef f_name_
-        sprint (f_name_,"%s-%d-%d-%s.%s", "StimIn", PP_box_startid_, PP_box_nr_, idname, suffix)
+        sprint (f_name_,"%s%s-%d-%d-%s.%s", datadir, "StimIn", PP_box_startid_, PP_box_nr_, idname, suffix)
 
         print "\tWriting input trains to file: ", f_name_  
 
@@ -1161,7 +1168,6 @@ begintemplate DentateGyrus
 
         // write out noise input...
         if (print_stim_noise == 1){
-            if (debug_ == 2) {print "write out noise input..." }
             for i=0,npp-1 {
                 for j=0,vec_stim_noise[i].size()-1 {
                     stimfile.printf("%f\t%d\n",vec_stim_noise[i].x[j],i+npp)
@@ -1210,10 +1216,6 @@ begintemplate DentateGyrus
         finitialize(v_init)
         trial_old = trial
 
-        if (debug_ ==2 ) { 
-            print "number of Poisson inputs:\t",rslist.count()
-        }
-
         if ($1 == 100) {
             // Reset all Poisson inputs with the correct seed
             for i = 0, rslist.count()-1 rslist.o(i).start(trial)
@@ -1258,10 +1260,10 @@ begintemplate DentateGyrus
         }
     }
 
-    proc run() {local i, j localobj cvode 
+    proc run() {local i, j  
         // MAKE NETWORK
         make_cells()
-        make_input_stimulation
+        make_input_stimulation()
         make_connections()
 
         // INITIALIZE OPTIMIZER 
@@ -1273,7 +1275,7 @@ begintemplate DentateGyrus
 
         // RUN SIMULATION 
         print "Running simulation."
-        for (PP_box_startid_ = 0; PP_box_startid_ <= 12; PP_box_startid_ += 1 ) {
+        for (PP_box_startid_ = 0; PP_box_startid_ <= 12; PP_box_startid_ += 1 ) { 
             // [ TODO ] Check to see if these are always the same. If they are, 
             //          then this should be outside of the loop.
             save_network_connections()
@@ -1300,10 +1302,7 @@ begintemplate DentateGyrus
             }
             if (print_Raster == 1) { 
                 write_spike_times_to_file() 
-            } 
-            if (print_template == 1) {
-                SpkMx_template() 
-            } 
+            }  
             if (print_stim_==1) {
                 write_stimuli_to_file()
             }
@@ -1311,17 +1310,3 @@ begintemplate DentateGyrus
     }
 
 endtemplate DentateGyrus 
-
-
-
-// Need to declare global seed here for ranstream object
-
-global_seed = 1 
-objref dg 
-dg = new DentateGyrus(1, global_seed, "InitialSim")
-print dg.ngcell
-
-
-
-
-
