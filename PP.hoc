@@ -17,8 +17,8 @@
 
 begintemplate PPstim
 
-external PP_rate_, tstop
-external PP_box_start_,PP_box_stop_			// stimulation window instead of Poisson input ...
+//external PP_rate_, tstop
+//external PP_box_start_,PP_box_stop_			// stimulation window instead of Poisson input ...
 
 public pp, connect_pre, is_art, acell
 create acell
@@ -26,7 +26,12 @@ objref pp
 
 
 proc init() {
-	actemp() 		
+	actemp()
+    pp_index = $1
+    PP_rate_ = $2
+    tstop = $3
+    PP_box_start_ = $4
+    PP_box_stop_ = $5
 }
 
 proc actemp() {

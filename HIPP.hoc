@@ -11,10 +11,9 @@
 // http://onlinelibrary.wiley.com/doi/10.1002/hipo.22373/abstract
 
 // modified by
+// Abraham Nunes / 2022
 // Man Yi Yim / 2015
 // Alexander Hanuschkin / 2011
-
-objref Hcell[nhcell]
 
 begintemplate HIPPCell
 

@@ -3,7 +3,7 @@ random_stream_offset_ = 1000
 begintemplate RandomStream
 public r, repick, start, stream
 external random_stream_offset_
-external trial 
+external global_seed 
 objref r
 proc init() {
 	stream = $1
@@ -15,7 +15,7 @@ func start() {
 	if (stream<5) {
  		//	print "start Seed for Poisson Generator ",stream," with ",(stream*random_stream_offset_ + 1)
 	}
-	return r.MCellRan4(stream*random_stream_offset_ + 1 + trial)
+	return r.MCellRan4(stream*random_stream_offset_ + 1 + global_seed)
 }
 func repick() {
 	return r.repick()

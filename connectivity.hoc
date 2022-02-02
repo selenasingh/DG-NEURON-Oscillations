@@ -231,6 +231,7 @@ connect_mossy_cells()    : Initializes mossy cell connections
 connect_hipp_cells()    : Initializes HIPP cell connections
 ============================================================================ */
 
+objref pprec
 proc connect_pp_to_gc() { local i, j
     // Create vector that marks PP neurons that already project to a GC
     pprec =  new Vector(npp, 0) 
@@ -254,11 +255,11 @@ proc connect_pp_to_gc() { local i, j
             if ((print_stim_==1) && (i<npp)) {
                 if (pprec.x[j] == 0) {
                     // record input sequence to first neuron for debug purpose only....
-                    nc_append_rec (j+ngcell+nbcell+nmcell+nhcell, i, 0, 2e-2*scale_PP_strength/100., 3, 10, vec_stim[j]) 
+                    nc_append_rec(j+ngcell+nbcell+nmcell+nhcell, i, 0, 2e-2*scale_PP_strength/100., 3, 10, vec_stim[j]) 
                     pprec.x[j] = 1
                 } else {
                     // record input sequence to first neuron for debug purpose only....
-                    nc_append (j+ngcell+nbcell+nmcell+nhcell, i, 0, 2e-2*scale_PP_strength/100., 3, 10)
+                    nc_append(j+ngcell+nbcell+nmcell+nhcell, i, 0, 2e-2*scale_PP_strength/100., 3, 10)
                 }
             } else {
                 // connect PP to GC[j],syn[0],wt,del,threshold   <AH> NOTE both synapses are equal, ie. weight delay (except position) not important
@@ -420,7 +421,7 @@ proc connect_granule_cells() { local i,j
             } else {
                 j -= 1
                 if (debug_ == 1 ) {
-                    print "nogc2mc
+                    print "nogc2mc"
                 }
             }
         }

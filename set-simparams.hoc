@@ -1,6 +1,7 @@
 // SIMULATION: parameters
 dt              = 0.1           // simulation time [ms]
 tstop           = 200           // total simulation time [ms]
+global_seed     = 1
 trial 		    = 1             // trialnumber = seed of simulation
 trial_noise 	= 1 		    // seed for noise to PP
 rseed           = trial         // pseudorandom number generator seed
