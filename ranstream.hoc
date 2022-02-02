@@ -23,7 +23,7 @@ begintemplate RandomStream
             $1 : int : Seed
 
         */
-        return r.MCellRan4(stream*random_stream_offset_ + 1 + $2)
+        return r.MCellRan4(stream*random_stream_offset_ + 1 + $1)
     }
     func repick() {
         return r.repick()
