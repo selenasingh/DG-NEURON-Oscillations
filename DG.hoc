@@ -7,13 +7,6 @@
         - Might rename `global_seed` 
 
         - Where to put the following?
-            // INITIALIZE CVODE 
-            objref cvode
-            cvode = new CVode()
-            using_cvode_ = 1
-            debug_ 		 = 2   // print output (everything: debug==1; some: debug==0 ) 
-
-        - Where to put the following?
             // for debug purpose only...
             objref netcon, nil
             objref vec_debug_
@@ -26,7 +19,19 @@
             - onnect_pp_to_gc()
             - connect_pp_to_bc()
             - connect_pp_to_hipp()
+        
+        - Address the `KillMC` aspects that are not integrated in Yim, but from Santhakumar
 
+        - Functions to be renamed for consistent style:
+            - nc_append()
+            - nc_append_rec()
+
+        - Variables to be renamed for consistent style: 
+            - PP_box_startid_
+            - PP_box_nr_
+            - DGVt_name_
+            - print_Vtrace
+            - print_Raster
 
         - Remove references to the following: 
             init_from_file_ = 0		// read in initial potential of all cells/compartments from file 
@@ -41,6 +46,9 @@ err_ = load_file("HIPP.hoc")
 err_ = load_file("PP.hoc")
 
 begintemplate DentateGyrus
+    // Public methods
+    public init, run
+
     // Simulation related declarations
     //      Random number generators 
     objref rdgc2gc, rdgc2bc, rdgc2mc, rdgc2hc 
@@ -51,7 +59,12 @@ begintemplate DentateGyrus
     objref rdsynb, rdsyna 
 
     // Data management related declarations 
-    objref Spike[726], Spike_times[726], dfile
+    public VmT, VmMat, idname
+    objref Spike[726]       // Binary representations of spikes
+    objref Spike_times[726] // Spike times for each cell
+    objref VmT              // Vector storing time index
+    objref VmMat[726]       // One vector per cell storing membrane potential
+    objref efile            // Membrane potential storage file
 
     // Declarations related to debugging 
     objref vec_stim[100], vec_stim_noise[100]
@@ -63,29 +76,35 @@ begintemplate DentateGyrus
     public cells, nclist
     objref cells , Gcell[500], Bcell[6], Mcell[15], Hcell[6]
     objref PPSt[100], PPSt_noise[100]
-    objref nclist, netcon
+    objref rslist, rs_noiselist, pp_start
+    objref nclist, netcon, netcon_d[100]
     objref vgc2gc, vgc2bc, vgc2mc, vgc2hc
     objref vbc2gc, vbc2bc, vbc2mc
     objref vmc2gc, vmc2bc, vmc2mc, vmc2hc
     objref vhc2gc, vhc2bc, vhc2mc
     objref pp2gc, pp2bc, pp2hc
+    create aacell // artificial cell if windows (boxed) activation [ TODO ] - Study this more
 
     proc init() {
         /* Initialization of the DentateGyrus object
         
         Arguments: 
-            $1 : int : Which figure you are trying to generate data for
-            $2 : int : Random state (global RNG seed)
+            $1  : int : Which figure you are trying to generate data for
+            $2  : int : Random state (global RNG seed)
+            $s3 : str : A label for this simulation 
         */
         fig = $1
         random_state = $2
+
+        strdef idname
+        idname = $s3
 
         // Simulation and data storage parameters
         set_simulation_parameters(random_state)
         set_data_management_params()
 
         // Set parameters related to network
-        set_neuron_population_sizes()
+        set_neuron_population_params()
         set_perforant_path_input_params()
         set_connectivity_params()
 
@@ -97,10 +116,14 @@ begintemplate DentateGyrus
 
         // Create network
         make_cells()
+        make_input_stimulation
         make_connections()
 
     }
 
+    // ########################################################################
+    //  FUNCTIONS FOR SETTING PARAMETERS, HOUSEKEEPING, ETC
+    // ########################################################################
     proc set_simulation_parameters() {
         /* Sets parameters for numerical aspects of the simulation 
         
@@ -115,7 +138,6 @@ begintemplate DentateGyrus
         debug_ = 2
 
     }
-
 
     proc set_pseudorandom_number_generators(){
         /* Create the pseudorandom number generators for the network 
@@ -191,10 +213,8 @@ begintemplate DentateGyrus
         */
 
         // Define file names for simulation results output
-        //  [TODO] MODIFY THIS APPROPRIATELY 
-        strdef suffix, idname 
+        strdef suffix 
         suffix = "txt"
-        idname = "-pp10-gaba1-kir1-st0"
 
         strdef init_state_fname_
         init_state_fname_ = "NetworkState_init_10Hz.dat"
@@ -206,9 +226,10 @@ begintemplate DentateGyrus
         print_GC_sprouting_input_ = 0	// calculates and print out GC sprouting input number distribution
         print_stim_ 	 = 1             // print stimulus to GCs for debug purpose..
         print_stim_noise = 1            // print noise to GCs for debug purpose.. (same output file as Poisson input to GCs!)
+
     }
 
-    proc set_neuron_population_sizes(){
+    proc set_neuron_population_params(){
         /* Initialize the number of cells of each type in the networks
         */
         ngcell = 500		    // number of GCs 
@@ -220,6 +241,9 @@ begintemplate DentateGyrus
 
         // Add 2*npp because of PP input and PP noise...
         ntotal = ngcell + nbcell + nmcell + nhcell + npp + npp
+
+        // Neuronal params 
+        v_init = -77.71
 
     }
 
@@ -275,7 +299,6 @@ begintemplate DentateGyrus
             scale_kir_          = 100
             scale_gabaa_        = 100
             p_sprouted_         = 0
-            idname = "-pp10-gaba1-kir1-st0"
         }
 
         if (fig == 2) {
@@ -283,7 +306,6 @@ begintemplate DentateGyrus
             scale_kir_          = 100
             scale_gabaa_        = 100
             p_sprouted_         = 30
-            idname = "-pp10-gaba1-kir1-st30"
         }
 
         if (fig == 3) {
@@ -291,7 +313,6 @@ begintemplate DentateGyrus
             scale_kir_          = 400
             scale_gabaa_        = 400
             p_sprouted_         = 30
-            idname = "-pp10-gaba4-kir4-st30"
         }
 
         if (fig == 4) {
@@ -299,7 +320,6 @@ begintemplate DentateGyrus
             scale_kir_          = 100
             scale_gabaa_        = 100
             p_sprouted_         = 10
-            idname = "-pp16-gaba1-kir1-st10"
         }
 
         if (fig == 5) {
@@ -307,10 +327,12 @@ begintemplate DentateGyrus
             scale_kir_          = 400
             scale_gabaa_        = 400
             p_sprouted_         = 10
-            idname = "-pp16-gaba4-kir4-st10"
         }
     } 
 
+    // ########################################################################
+    //  FUNCTIONS FOR SETTING UP CELLS/INPUTS
+    // ########################################################################
     proc make_cells() {local i
         // Need to re-declare cell arrays with proper sizes
         objref Gcell[ngcell], Bcell[nbcell], Mcell[nmcell], Hcell[nhcell]
@@ -334,12 +356,69 @@ begintemplate DentateGyrus
         for i = 0, npp-1 {cells.append(PPSt_noise[i])}  
     }
 
+    proc make_input_stimulation(){ local i
+        /* Creates the perforant path input stimulation objects
+        */
+        // Print update to console
+        print "\tDefining Random Generator for each PPStim object."   
+        objref pp_start
+        objref netcon_d[npp]
+
+
+        rslist = new List()
+        rs_noiselist = new List()
+
+        // Input window (box)
+        random_stream_offset_ = PP_rate_ * 1000
+        for i=0, npp-1 {
+            rs = new RandomStream(i, random_state)
+            rslist.append(rs)
+            PPSt[i].pp.noiseFromRandom(rs.r)
+            rs.r.uniform(0,1)
+            rs.start(random_state)
+        }
+        for i=0, npp-1 {
+            rs = new RandomStream(i+npp, random_state)
+            rs_noiselist.append(rs)
+            PPSt_noise[i].pp.noiseFromRandom(rs.r)
+            rs.r.uniform(0,1)
+            rs.start(random_state)
+        }
+
+        // artificial pulse to PPSt[i].pp in order to become active...
+        aacell pp_start = new NetStim125(.5)  
+        pp_start.interval = 1e-5
+        pp_start.number = 1
+        pp_start.start = 0
+        pp_start.forcestop = 1.
+        pp_start.noise = 1 
+
+        // assign Random Generator to init..
+        // [TODO] - Study more what is happening here
+        rs = new RandomStream(npp, random_state)				
+        return_val_ = rslist.append(rs) // save returned value in return_val_ to suppress screen output
+        return_val_ = pp_start.noiseFromRandom(rs.r)
+        return_val_ =  rs.r.negexp(1)
+        return_val_ = rs.start(random_state)
+
+        // each PPSt[i].pp needs to receive a netevent to become active...
+        //  [ TODO ] - allow for these parameters to be changed more generally
+        for i=0, npp-1 { 
+            netcon_d[i] = new NetCon(pp_start,PPSt[i].pp)
+            netcon_d[i].weight 	= 10.			 	
+            netcon_d[i].delay = 0.001
+            netcon_d[i].threshold = 10.
+        }
+    }
+
+    // ########################################################################
+    //  FUNCTIONS FOR MAKING NETWORK CONNECTIVITY
+    // ########################################################################
     proc make_connections(){
         /* Instantiates connectivity in the network
         */
         // Instantiate the connectivity list 
         nclist = new List()
-
 
         // Instantiate vectors for connections
         //      GC -> {GC, BC, MC, HC} 
@@ -370,7 +449,7 @@ begintemplate DentateGyrus
         connect_pp_to_bc()
         connect_pp_to_hipp()
         connect_granule_cells()
-        connect_basket_cells()
+        // connect_basket_cells()
         // connect_mossy_cells()
         // connect_hipp_cells()
     }
@@ -432,7 +511,8 @@ begintemplate DentateGyrus
         /* Function that connects perforant path inputs to granule cells
         */
         // Print message to indicate procedure 
-        print "Connecting PP -> GC."
+        print "Connecting PP to post-synaptic targets."
+        print "\tConnecting PP -> GC."
 
         // Create vector that marks PP neurons that already project to a GC
         pprec =  new Vector(npp, 0) 
@@ -488,7 +568,7 @@ begintemplate DentateGyrus
         /* Connect perforant path inputs to basket cells 
         */
         // Print message to indicate procedure 
-        print "Connecting PP -> BC."
+        print "\tConnecting PP -> BC."
 
         // Only proceed if there are PP to BC connections
         if (scale_PP2BC_strength != 0) {
@@ -519,7 +599,7 @@ begintemplate DentateGyrus
         /* Connecting perorant path to HIPP cells 
         */
         if (scale_PP2HC_strength != 0) {
-            print "Connecting PP -> HIPP."
+            print "\tConnecting PP -> HIPP."
             
             for i=0, nhcell-1 {
                 pp2hc = new Vector(npp, 0)
@@ -678,7 +758,7 @@ begintemplate DentateGyrus
                 c1 = cells.object(npost)
                 c2 = cells.object(i)
                 if ((is_connected(c1, c2) == 0) && (vgc2gc.x[npost] < (n_sprout_*1.5+2) )) {	// if is connected AND not more than 14 incoming connections...
-                                                                     //  (original file < 15) (assume 1.5 times average connections for upper limit...)
+                                                                    //  (original file < 15) (assume 1.5 times average connections for upper limit...)
                     nc_append(i, npost, dbr+7, 2e-3, .8, 10)  							// Gcell[3] to Bcell[1]
                     //	print npost, dbr+8					
                     if (debug_ == 0 ) {print "GC \t",i,"\t to GC\t\t",npost, "\t", dbr+7}
@@ -688,6 +768,7 @@ begintemplate DentateGyrus
                     if (debug_ == 0) {print "gc2gc"}
                 }
             }
+            
         }
 
         if (print_GC_sprouting_input_ == 1) {
@@ -706,7 +787,7 @@ begintemplate DentateGyrus
     }
 
     proc connect_basket_cells() { local i,j localobj c1, c2
-        print "Connecting Basket Cells. "
+        print "Connecting BCs to post-synaptic targets. "
 
         for  i=0, nbcell-1 {
             // BC -> GC 
@@ -776,188 +857,464 @@ begintemplate DentateGyrus
         }
     }
 
+    proc connect_mossy_cells() {local i,j localobj c1, c2
+        /* Connect mossy cells to post-synaptic targets 
+        */
+        // Print to indicate step
+        print "Connecting MCs to post-synaptic targets."
 
-    // proc connect_mossy_cells() {local i,j 
-    //     if (debug_ ==2 ) { 
-    //         print "Mossy Cell post synaptic connections"
-    //     }
-
-    //     for  i=0, nmcell-1 {
+        for  i=0, nmcell-1 {
+            //if (killMC.contains(ngcell+nbcell+i) == 0) 	// use if killing MC
+            if (i < 3) { y=0 }
+            if ((i > 2) && (i < 6)) { y=1 }
+            if ((i > 5) && (i < 9)) { y=2 }
+            if ((i > 8) && (i < 12)) { y=3 }
+            if ((i > 11) && (i < 15)) { y=4 }
             
-    //         //if (killMC.contains(ngcell+nbcell+i) == 0) 	// use if killing MC
-    //         if (i < 3) { y=0 }
-    //         if ((i > 2) && (i < 6)) { y=1 }
-    //         if ((i > 5) && (i < 9)) { y=2 }
-    //         if ((i > 8) && (i < 12)) { y=3 }
-    //         if ((i > 11) && (i < 15)) { y=4 }
-            
-    //         // MC -> GC1
-    //         for j=0, 99 {
-    //             Gauz1 = rdmc2gc1.repick()		// [25:175]
-    //             if (i*33+17+Gauz1 > 499) {
-    //                 npost1 = i*33+17+Gauz1-500
-    //             } else {
-    //                 npost1 =i*33+17+Gauz1
-    //             }
+            // MC -> GC1
+            for j=0, 99 {
+                Gauz1 = rdmc2gc1.repick()		// [25:175]
+                if (i*33+17+Gauz1 > 499) {
+                    npost1 = i*33+17+Gauz1-500
+                } else {
+                    npost1 =i*33+17+Gauz1
+                }
                 
-    //             dbr = rdsyna.repick()			// [0:1]
-    //             if ((is_connected(GranuleCell[npost1], MossyCell[i]) == 0) && (vmc2gc.x[npost1] < 7))  {
-    //                 nc_append(i+ngcell+nbcell, npost1, dbr+2, 0.3e-3*scale_MC2GC_strength/100., 3, 10)
-    //                 vmc2gc.x[npost1] +=1
-    //             } else { 
-    //                 j -= 1	
-    //             } 
-    //         }
+                dbr = rdsyna.repick()			// [0:1]
+                c1 = cells.object(npost1)
+                c2 = cells.object(i+ngcell+nbcell)
+                if ((is_connected(c1, c2) == 0) && (vmc2gc.x[npost1] < 7))  {
+                    nc_append(i+ngcell+nbcell, npost1, dbr+2, 0.3e-3*scale_MC2GC_strength/100., 3, 10)
+                    vmc2gc.x[npost1] +=1
+                } else { 
+                    j -= 1	
+                } 
+            }
 
-    //         // MC -> GC2
-    //         for j=0, 99 {
-    //             Gauz2 = rdmc2gc2.repick()		// [-175:25]
-    //             if (i*33+17+Gauz2 < 0) {
-    //                 npost2 =i*33+17+Gauz2+500
-    //             } else {npost2 =i*33+17+Gauz2}
-    //                 dbr = rdsyna.repick()			// [0:1]
-    //             if ((is_connected(GranuleCell[npost2], MossyCell[i]) == 0) && (vmc2gc.x[npost2] < 7))  {
-    //                 nc_append(i+ngcell+nbcell, npost2, dbr+2, 0.3e-3*scale_MC2GC_strength/100., 3, 10)  // Gcell[3] to Bcell[1]
-    //                 vmc2gc.x[npost2] +=1
-    //             } else { 
-    //                 j -= 1	 
-    //             }
-    //         }
-
-
-    //         // MC -> BC
-    //         for j=0, 0 {
-    //             Gauz3 = rdmc2bc.repick()						    // Gauz3 = [-3:3]	
-    //             if (y+Gauz3 > nbcell-1) {npost = y+Gauz3-nbcell}    // y     = [0:4] 	=> y+Gaus3 = [-3:7]
-    //             if (y+Gauz3 < 0) {npost = y+Gauz3+nbcell} 
-    //             if ((y+Gauz3 > -1) && (y+Gauz3 < nbcell)) {npost = y+Gauz3}
-    //             dbr = rdsyna.repick()
-    //             if ((vmc2bc.x[npost] < 4) && (Gauz3 !=0)) {
-    //                 nc_append(i+ngcell+nbcell, ngcell+npost, dbr+6, 0.3e-3, 3, 10)  // Gcell[3] to Bcell[1]
-    //                 vmc2bc.x[npost] += 1
-    //             } else { 
-    //                 j -= 1	 
-    //             } 
-    //         }
+            // MC -> GC2
+            for j=0, 99 {
+                Gauz2 = rdmc2gc2.repick()		// [-175:25]
+                if (i*33+17+Gauz2 < 0) {
+                    npost2 =i*33+17+Gauz2+500
+                } else {npost2 =i*33+17+Gauz2}
+                dbr = rdsyna.repick()			// [0:1]
+                c1 = cells.object(npost2)
+                c2 = cells.object(i+ngcell+nbcell)
+                if ((is_connected(c1, c2) == 0) && (vmc2gc.x[npost2] < 7))  {
+                    nc_append(i+ngcell+nbcell, npost2, dbr+2, 0.3e-3*scale_MC2GC_strength/100., 3, 10)  // Gcell[3] to Bcell[1]
+                    vmc2gc.x[npost2] +=1
+                } else { 
+                    j -= 1	 
+                }
+            }
 
 
-    //         // MC -> MC 
-    //         for j=0, 2 {
-    //             Gauz3 = rdmc2mc1.repick()		//[-3:3]
-    //             if (i+Gauz3 > 14) {npost = i+Gauz3-15 }
-    //             if (i+Gauz3 < 0) {npost = i+Gauz3+15} 
-    //             if ((i+Gauz3 >-1) && (i+Gauz3 < 15)) {npost = i+Gauz3}
-    //             dbr = rdsynb.repick()
-    //             //	if ((is_connected(MossyCell[npost], MossyCell[i]) == 0) && (vmc2mc.x[npost] < 4) && (Gauz3 != 0) && (killMC.contains(ngcell+nbcell+npost) == 0))  	// use if killing MC
-    //             if ((is_connected(MossyCell[npost], MossyCell[i]) == 0) && (vmc2mc.x[npost] < 4) && (Gauz3 != 0))  {
-    //                 nc_append(i+ngcell+nbcell, npost+ngcell+nbcell, dbr+8, 0.5e-3, 2, 10)  // Gcell[3] to Bcell[1]
-    //                 //	print npost, dbr+8
-    //                 vmc2mc.x[npost] +=1
-    //             } else { 
-    //                 j -= 1	
-    //             }
-    //             // 	if (killMC.contains(ngcell+nbcell+npost) == 1){ j += 1 print "dead MC"}	// use if killing MC
-    //         }
+            // MC -> BC
+            for j=0, 0 {
+                Gauz3 = rdmc2bc.repick()						    // Gauz3 = [-3:3]	
+                if (y+Gauz3 > nbcell-1) {npost = y+Gauz3-nbcell}    // y     = [0:4] 	=> y+Gaus3 = [-3:7]
+                if (y+Gauz3 < 0) {npost = y+Gauz3+nbcell} 
+                if ((y+Gauz3 > -1) && (y+Gauz3 < nbcell)) {npost = y+Gauz3}
+                dbr = rdsyna.repick()
+                if ((vmc2bc.x[npost] < 4) && (Gauz3 !=0)) {
+                    nc_append(i+ngcell+nbcell, ngcell+npost, dbr+6, 0.3e-3, 3, 10)  // Gcell[3] to Bcell[1]
+                    vmc2bc.x[npost] += 1
+                } else { 
+                    j -= 1	 
+                } 
+            }
 
 
-    //         // MC -> HC
-    //         for j=0, 1 {
-    //             Gauz3 = rdmc2hc.repick()			// [-2:2]
-    //             if (y+Gauz3 > nhcell-1) {npost = y+Gauz3-nhcell}							// changed code here to allow > 6 HCells
-    //             if (y+Gauz3 < 0) {npost = y+Gauz3+nhcell} 
-    //             if ((y+Gauz3 > -1) && (y+Gauz3 < nhcell)) {npost = y+Gauz3}
-    //             dbr = rdsynb.repick()
-    //             if ((is_connected(HIPPCell[npost], MossyCell[i]) == 0) && (vmc2hc.x[npost] < 7) && (Gauz3 != 0))  {
-    //                 nc_append(i+ngcell+nbcell, ngcell+nbcell+nmcell+npost, dbr+4, 0.2e-3, 3, 10)  // Gcell[3] to Bcell[1]
-    //                 //	print npost, dbr+4
-    //                 vmc2hc.x[npost] +=1
-    //             } else {
-    //                 j -= 1	
-    //             }
-    //         }
-    //     }
-    // }
+            // MC -> MC
+            for j=0, 2 {
+                Gauz3 = rdmc2mc1.repick()		//[-3:3]
+                if (i+Gauz3 > 14) {npost = i+Gauz3-15 }
+                if (i+Gauz3 < 0) {npost = i+Gauz3+15} 
+                if ((i+Gauz3 >-1) && (i+Gauz3 < 15)) {npost = i+Gauz3}
+                dbr = rdsynb.repick()
+                //	if ((is_connected(MossyCell[npost], MossyCell[i]) == 0) && (vmc2mc.x[npost] < 4) && (Gauz3 != 0) && (killMC.contains(ngcell+nbcell+npost) == 0))  	// use if killing MC
+                
+                c1 = cells.object(npost+ngcell+nbcell) 
+                c2 = cells.object(i+ngcell+nbcell) 
+                if ((is_connected(c1, c2) == 0) && (vmc2mc.x[npost] < 4) && (Gauz3 != 0))  {
+                    nc_append(i+ngcell+nbcell, npost+ngcell+nbcell, dbr+8, 0.5e-3, 2, 10)
+                    //	print npost, dbr+8
+                    vmc2mc.x[npost] +=1
+                } else { 
+                    j -= 1	
+                }
+                // 	if (killMC.contains(ngcell+nbcell+npost) == 1){ j += 1 print "dead MC"}	// use if killing MC
+            }
 
 
-    // proc connect_hipp_cells() {local i,j
-    //     if (debug_ ==2 ) { print "HIPP Cell post synaptic connections"}
-    //     for  i=0, nhcell-1 {
+            // MC -> HC
+            for j=0, 1 {
+                Gauz3 = rdmc2hc.repick()			// [-2:2]
+                if (y+Gauz3 > nhcell-1) {npost = y+Gauz3-nhcell}							// changed code here to allow > 6 HCells
+                if (y+Gauz3 < 0) {npost = y+Gauz3+nhcell} 
+                if ((y+Gauz3 > -1) && (y+Gauz3 < nhcell)) {npost = y+Gauz3}
+                dbr = rdsynb.repick()
 
-    //         // HC -> GC
-    //         for j=0, 159 {											// NOTE number of connections explicitly coded here!
-    //             Gauz3 = rdhc2gc.repick()									// [-130:130]
-    //             //print Gauz3
-    //             if (i*83+41+Gauz3 > 499) {npost = i*83+41+Gauz3-500 }						// NOTE: 500 is explicitly coded here!
-    //             if (i*83+41+Gauz3 < 0) {npost = i*83+41+Gauz3+500} 
-    //             if ((i*83+41+Gauz3 > -1) && (i*83+41+Gauz3 < 500)) {npost = i*83+41+Gauz3}
-    //             //print npost
-    //             dbr = rdsyna.repick()
-    //             if (nhcell != 6) {max_conn = 5} else {max_conn = 3}
-    //             if ((is_connected(GranuleCell[npost], HIPPCell[i]) == 0) && (vhc2gc.x[npost] < max_conn))  {		// NOTE < 3 coded explicitly here! -> change to 5
-    //                 nc_append(i+ngcell+nbcell+nmcell, npost, dbr+4, 0.5e-3*scale_HC2GC_strength/100., 1.6, 10)  			// Hcell to Gcell
-    //                 vhc2gc.x[npost] +=1
-    //                 if (debug_ == 1 ) {print i, npost, dbr+4}
-    //             } else {
-    //                 j -= 1	
-    //                 if (debug_ == 1 ) {print "HC2GC"}
-    //             }
-    //         }
-
-    //         // HC -> BC
-    //         for j=0, 3 {
-    //             Gauz3 = rdhc2bc.repick()									// [-2:2]
-    //             if (i+Gauz3 > nbcell-1) {npost = i+Gauz3-nbcell}
-    //             if (i+Gauz3 < 0) {npost = i+Gauz3+nbcell} 
-    //             if ((i+Gauz3 > -1) && (i+Gauz3 < nbcell)) {npost = i+Gauz3}
-    //             dbr = rdsyna.repick()
-    //             if ((is_connected(BasketCell[npost], HIPPCell[i]) == 0) && (vhc2bc.x[npost] < 5))  {		// NOTE < 5 coded explicitly here!
-    //                 nc_append(i+ngcell+nbcell+nmcell, npost+ngcell, dbr+10, 0.5e-3, 1.6, 10)  		// Hcell to Bcell
-    //                 if (debug_ == 1 ) {print npost, dbr+10}
-    //                 vhc2bc.x[npost] += 1
-    //             } else {
-    //                 j -= 1	
-    //                 if (debug_ == 1 ) {print "HC2BC"}
-    //             }
-    //         }
-
-    //         // HC -> MC
-    //         for j=0, 3 {							
-    //             Gauz3 = rdhc2mc.repick()									// [-2:2]
-    //             //print Gauz3
-    //             if (i*2+2+Gauz3 > 14) {npost = i*2+2+Gauz3-15 }
-    //             if (i*2+2+Gauz3 < 0) {npost = i*2+2+Gauz3+15} 
-    //             if ((i*2+2+Gauz3 >-1) && (i*2+2+Gauz3 < 15)) {npost = i*2+2+Gauz3}
-    //             //print npost
-    //             dbr = rdsynb.repick()
-    //             //	  if ((is_connected(MossyCell[npost], HIPPCell[i]) == 0) && (vhc2mc.x[npost] < 2) && (killMC.contains(ngcell+nbcell+npost) == 0))  	//use if killing MC
-    //                 if (nhcell != 6) {max_conn = 4} else {max_conn = 2}
-    //             if ((is_connected(MossyCell[npost], HIPPCell[i]) == 0) && (vhc2mc.x[npost] < max_conn))  {		// NOTE < 2 coded explicitly here!!  => changed to 4 
-    //                 nc_append(i+ngcell+nbcell+nmcell, npost+ngcell+nbcell, dbr+13, 1.5e-3, 1, 10)  		// Hcell to Mcell
-    //                 //if (debug_ == 1 ) {print npost, dbr+13}
-    //                 vhc2mc.x[npost] += 1
-    //             } else {	
-    //                 j -= 1	
-    //                 if (debug_ == 1 ) {print "HC2MC"}
-    //             }
-    //             //  if (killMC.contains(ngcell+nbcell+npost) == 1){ j += 1 print "dead MC"} 			//use if killing MC
-    //         }
-    //     }
-    // }
-
-    proc run() {local i, j
-        // INITIALIZE DATA CONTAINERS
-        // Need to re-declare Spike and Spike_times with proper size
-        objref Spike[ntotal-1], Spike_times[ntotal-1]
-        for i=0, (ngcell+nbcell +nmcell +nhcell -1) {
-            // vector of spikes for each cell
-            Spike[i] = new Vector()      
-            // vector of spike times for each cell  
-            Spike_times[i] = new Vector()
+                c1 = cells.object(ngcell+nbcell+nmcell+npost) 
+                c2 = cells.object(i+ngcell+nbcell) 
+                if ((is_connected(c1, c2) == 0) && (vmc2hc.x[npost] < 7) && (Gauz3 != 0))  {
+                    nc_append(i+ngcell+nbcell, ngcell+nbcell+nmcell+npost, dbr+4, 0.2e-3, 3, 10)  // Gcell[3] to Bcell[1]
+                    //	print npost, dbr+4
+                    vmc2hc.x[npost] +=1
+                } else {
+                    j -= 1	
+                }
+            }
         }
-        
-        strdef Spkstr           // What is this?
-        dfile = new File()
+    }
 
+    proc connect_hipp_cells() {local i,j localobj c1, c2
+        /* Connect HIPP cells to post-synaptic targets 
+        */
+        // Print to indicate step
+        print "Connecting HIPP cells to post-synaptic targets."
+
+        for  i=0, nhcell-1 {
+            // HC -> GC
+            for j=0, 159 {											// NOTE number of connections explicitly coded here!
+                Gauz3 = rdhc2gc.repick()									// [-130:130]
+                //print Gauz3
+                if (i*83+41+Gauz3 > 499) {npost = i*83+41+Gauz3-500 }						// NOTE: 500 is explicitly coded here!
+                if (i*83+41+Gauz3 < 0) {npost = i*83+41+Gauz3+500} 
+                if ((i*83+41+Gauz3 > -1) && (i*83+41+Gauz3 < 500)) {npost = i*83+41+Gauz3}
+                //print npost
+                dbr = rdsyna.repick()
+                if (nhcell != 6) {max_conn = 5} else {max_conn = 3}
+
+                c1 = cells.object(npost) 
+                c2 = cells.object(i+ngcell+nbcell+nmcell)
+                if ((is_connected(c1, c2) == 0) && (vhc2gc.x[npost] < max_conn))  {		                    
+                    nc_append(i+ngcell+nbcell+nmcell, npost, dbr+4, 0.5e-3*scale_HC2GC_strength/100., 1.6, 10) 
+                    vhc2gc.x[npost] +=1
+                    if (debug_ == 1 ) {print i, npost, dbr+4}
+                } else {
+                    j -= 1	
+                    if (debug_ == 1 ) {print "HC2GC"}
+                }
+            }
+
+            // HC -> BC
+            for j=0, 3 {
+                Gauz3 = rdhc2bc.repick()									// [-2:2]
+                if (i+Gauz3 > nbcell-1) {npost = i+Gauz3-nbcell}
+                if (i+Gauz3 < 0) {npost = i+Gauz3+nbcell} 
+                if ((i+Gauz3 > -1) && (i+Gauz3 < nbcell)) {npost = i+Gauz3}
+                dbr = rdsyna.repick()
+
+                c1 = cells.object(npost+ngcell) 
+                c2 = cells.object(i+ngcell+nbcell+nmcell)
+                if ((is_connected(c1, c2) == 0) && (vhc2bc.x[npost] < 5))  {		// NOTE < 5 coded explicitly here!
+                    nc_append(i+ngcell+nbcell+nmcell, npost+ngcell, dbr+10, 0.5e-3, 1.6, 10)  		// Hcell to Bcell
+                    if (debug_ == 1 ) {print npost, dbr+10}
+                    vhc2bc.x[npost] += 1
+                } else {
+                    j -= 1	
+                    if (debug_ == 1 ) {print "HC2BC"}
+                }
+            }
+
+            // HC -> MC
+            for j=0, 3 {							
+                Gauz3 = rdhc2mc.repick()									// [-2:2]
+                //print Gauz3
+                if (i*2+2+Gauz3 > 14) {npost = i*2+2+Gauz3-15 }
+                if (i*2+2+Gauz3 < 0) {npost = i*2+2+Gauz3+15} 
+                if ((i*2+2+Gauz3 >-1) && (i*2+2+Gauz3 < 15)) {npost = i*2+2+Gauz3}
+                //print npost
+                dbr = rdsynb.repick()
+                //	  if ((is_connected(MossyCell[npost], HIPPCell[i]) == 0) && (vhc2mc.x[npost] < 2) && (killMC.contains(ngcell+nbcell+npost) == 0))  	//use if killing MC
+                if (nhcell != 6) {max_conn = 4} else {max_conn = 2}
+                
+                c1 = cells.object(npost+ngcell+nbcell) 
+                c2 = cells.object(i+ngcell+nbcell+nmcell)
+                if ((is_connected(c1, c2) == 0) && (vhc2mc.x[npost] < max_conn))  {		                // NOTE < 2 coded explicitly here!!  => changed to 4 
+                    nc_append(i+ngcell+nbcell+nmcell, npost+ngcell+nbcell, dbr+13, 1.5e-3, 1, 10)  		// Hcell to Mcell
+                    //if (debug_ == 1 ) {print npost, dbr+13}
+                    vhc2mc.x[npost] += 1
+                } else {	
+                    j -= 1	
+                    if (debug_ == 1 ) {print "HC2MC"}
+                }
+                //  if (killMC.contains(ngcell+nbcell+npost) == 1){ j += 1 print "dead MC"} 			//use if killing MC
+            }
+        }
+    }
+    
+    // ########################################################################
+    //  FUNCTIONS FOR DATA STORAGE AND PRINTING
+    // ########################################################################
+    proc update_voltage_trace_matrix() { local i 
+        /* Procedure called in every time step to add voltage of 
+            recorded cell at time t
+        */
+        VmT.append(t)
+        for i=0, (ngcell+nbcell +nmcell +nhcell -1) {
+            VmMat[i].append( cells.object[i].soma.v(0.5))
+        }
+    }
+
+    proc convert_voltage_trace_to_spikes() { local i, j, max_id
+        /* Converts membrane potential vector to a spike train 
+        */
+        max_id = npp
+        if (  print_template == 1) { max_id = npp }
+        if (  print_Raster == 1) { max_id = ngcell+nbcell +nmcell +nhcell-1 }
+
+        for i=0, (max_id) {
+            // Used to make a binary version of a spike train.
+            // Vector().spikebin(<data>, <thresh>)
+            //      <data> is a vector of membrane potential.
+            //      <thresh> is the voltage threshold for spike detection.
+            //      <v> is set to all zeros except at the onset of spikes 
+            //          (the first dt which the spike crosses threshold)
+            Spike[i].spikebin(VmMat[i], 0)                                    
+        }
+    }
+
+    obfunc myprecell() { localobj nil
+        /* Read out the ID of pre or precell (by Ted Carnevale)
+
+        Arguments: 
+            $o1: NetCon 
+
+        */
+        // nil points to NULLobject
+        if ($o1.precell() == nil) {
+            return $o1.pre()
+        } else {
+            return $o1.precell()
+        }
+    }
+
+    proc save_network_connections(){ local i localobj dfile
+        /* Writes network adjacency list to file
+        */
+        print "\tWriting network connections to file."
+        strdef DGNC_name_
+        dfile = new File()
+        sprint (DGNC_name_, "%s-%d-%d-%s.%s", "DGNC", PP_box_startid_, PP_box_nr_, idname, suffix)
+        dfile.wopen(DGNC_name_)
+        for i=0, nclist.count-1 {
+            dfile.printf("%s\t%s\n", myprecell(nclist.object(i)), nclist.object(i).postcell)
+        }
+        dfile.close()
+    }
+
+    proc initialize_voltage_trace_file(){			
+        /* Creates the header for the membrane voltage file
+        */
+        strdef DGVt_name_ // Voltage file name
+        efile = new File()
+
+        // [ TODO ] -- n_to_print here is not good. Needs to be an object parameter or something.
+        n_to_print = 500    
+        print "\nOutput memb voltage traces of every ", ngcell/n_to_print, " GC and all other cells to file"
+        sprint (DGVt_name_,"%s-%d-%d-%s.%s", "DGVt", PP_box_startid_, PP_box_nr_, idname, suffix)
+        efile.wopen(DGVt_name_)
+        efile.printf("# t\t")
+        efile.printf("\n")
+        efile.close(DGVt_name_)
+    }
+
+    proc print_voltage_traces_to_file(){ local j
+        /* Prints voltage traces to file
+
+        TODO:
+            - Have better way to implement n_to_print so that 
+                we can print not only granule cells, but still do this neatly
+        */
+        efile.aopen(DGVt_name_)
+        efile.printf("%f\t", t)
+        for i = 0, n_to_print-1 {
+            efile.printf("%f\t", cells.object[int(i*ngcell/n_to_print)].soma.v(0.5))}
+        efile.printf("\n")
+        efile.close(DGVt_name_)
+    }
+
+    proc write_spike_times_to_file() { local i, j localobj spikefile
+        strdef DGsp_name_
+        sprint (DGsp_name_,"%s-%d-%d-%s.%s", "DGsp", PP_box_startid_, PP_box_nr_, idname, suffix)
+        print "\tWriting spike times to file: ", DGsp_name_ 
+        spikefile = new File()
+        spikefile.wopen(DGsp_name_)
+        k = 0 
+        while (k < VmT.size) {
+            for j = 0, (ngcell+nbcell+nmcell+nhcell-1) {
+                if(Spike[j].x[k] != 0) {
+                    // Writes out time of spike and cell id!
+                    spikefile.printf("%f\t%d\n", VmT.x[k], j)
+                }
+            }
+            k +=1
+        }
+        spikefile.close(DGsp_name_)
+    }
+
+    proc write_stimuli_to_file() {local i, j localobj stimfile 
+        /* Writes stimuli to file
+        */
+        stimfile = new File()
+        strdef f_name_
+        sprint (f_name_,"%s-%d-%d-%s.%s", "StimIn", PP_box_startid_, PP_box_nr_, idname, suffix)
+
+        print "\tWriting input trains to file: ", f_name_  
+
+        stimfile.wopen(f_name_)
+        for i=0,npp-1 {
+            for j=0,vec_stim[i].size()-1 {
+                stimfile.printf("%f\t%d\n",vec_stim[i].x[j],i)
+            }
+        }
+
+        // write out noise input...
+        if (print_stim_noise == 1){
+            if (debug_ == 2) {print "write out noise input..." }
+            for i=0,npp-1 {
+                for j=0,vec_stim_noise[i].size()-1 {
+                    stimfile.printf("%f\t%d\n",vec_stim_noise[i].x[j],i+npp)
+                }
+            }
+        }
+        stimfile.close(f_name_)
+    }
+
+    // ########################################################################
+    //  FUNCTIONS TO INITIALIZE AND RUN SIMULATION 
+    // ########################################################################
+    proc initialize_simulation_run() { local dtsav, temp, secsav 
+        /* Initialize a simulation run
+        
+        Arguments: 
+            - $1 : int : 100 [ TODO ] NEED TO UNDERSTAND THIS MORE. SOMETHING ABOUT SEED SETTING
+
+        */
+
+        finitialize(v_init)
+        // [ TODO ] - Figure out what these three next lines are for
+        t = -1000   // negative t step to initialize to steady state
+        dtsav = dt  // original simulation step size
+        dt= 10  	// larger step size	
+
+        // if cvode is on, turn it off to do large fixed step
+        //  [ TODO ] - Learn why
+        temp = cvode.active()		
+        if ( temp != 0 ) { cvode.active(0) }
+        while( t < -100 ) { fadvance() }
+
+        //restore cvode if reqd
+        if (temp!=0) { cvode.active(1) }
+        dt = dtsav
+        t = 0
+        
+        if ( cvode.active() ){
+            cvode.re_init()
+        } else {
+            fcurrent()
+        }
+
+        // restart number generators for PPStim
+        t = 0
+        finitialize(v_init)
+        trial_old = trial
+
+        if (debug_ ==2 ) { 
+            print "number of Poisson inputs:\t",rslist.count()
+        }
+
+        if ($1 == 100) {
+            // Reset all Poisson inputs with the correct seed
+            for i = 0, rslist.count()-1 rslist.o(i).start(trial)
+        } else {
+            // reset int((rslist.count()-1)*(1-$1/100.)) Poisson inputs with a different seed
+            trial = trial + 1
+            for i = 0,  int((rslist.count()-1)*(1-$1/100.)) rslist.o(i).start(trial)
+
+            // reset rslist.count()-int((rslist.count()-1)*(1-$1/100.)) Poisson inputs with the correct seed
+            trial = trial_old 
+            for i = int((rslist.count()-1)*(1-$1/100.)), rslist.count()-1 rslist.o(i).start(trial)
+        }
+
+        // init noise Generators (with  seed trial_noise ...)
+        // reset all Poisson noise inputs with the trial_noise seed
+        trial = trial_noise
+        for i = 0, rs_noiselist.count()-1 rs_noiselist.o(i).start(trial)
+        trial = trial_old
+
+        VmT = new Vector()
+        for i=0, cells.count-1 {
+            VmMat[i] = new Vector()
+        }
+
+        for i=0, (ngcell + nbcell + nmcell + nhcell -1) {
+            Spike[i] = new Vector()         // vector of spikes for each cell
+            Spike_times[i] = new Vector()   // vector of spikes for each cell
+        }
+
+        // finalize at the end 
+        // [ TODO ] - Figure out what's going on here
+        t = 0
+        finitialize(v_init)		
+        frecord_init()
+
+        // Select input pattern
+        for i=PP_box_startid_, PP_box_startid_+PP_box_nr_-1 {
+            PPSt[i].pp.status = 1
+            PPSt[i].pp.start = PP_box_start_
+            PPSt[i].pp.forcestop = PP_box_stop_
+            PPSt[i].pp.nspk = PP_box_nspk_
+        }
+    }
+
+    proc run() {local i, j localobj cvode 
+        // INITIALIZE OPTIMIZER 
+        cvode = new CVode()
+
+        // RE-INITIALIZE DATA CONTAINERS
+        objref Spike[ntotal-1], Spike_times[ntotal-1]
+        objref VmT, VmMat[cells.count]
+
+        // RUN SIMULATION 
+        print "Running simulation."
+        for (PP_box_startid_ = 0; PP_box_startid_ <= 12; PP_box_startid_ += 1 ) {
+            // [ TODO ] Check to see if these are always the same. If they are, 
+            //          then this should be outside of the loop.
+            save_network_connections()
+
+            initialize_simulation_run(100)
+
+            // File header voltage output file
+            if (print_Vtrace == 1) { 
+                initialize_voltage_trace_file()  
+            }      
+
+            while (t<tstop) {
+                fadvance()
+                if (print_Vtrace == 1) { 
+                    print_voltage_traces_to_file() 
+                }
+                if ((print_Raster == 1) ||  (print_template == 1))  { 
+                    update_voltage_trace_matrix() 
+                } 
+            }
+            
+            if ((print_Raster == 1) ||  (print_template == 1))  { 
+                convert_voltage_trace_to_spikes() 
+            }
+            if (print_Raster == 1) { 
+                write_spike_times_to_file() 
+            } 
+            if (print_template == 1) {
+                SpkMx_template() 
+            } 
+            if (print_stim_==1) {
+                write_stimuli_to_file()
+            }
+        }
     }
 
 endtemplate DentateGyrus 
@@ -967,7 +1324,11 @@ endtemplate DentateGyrus
 // Need to declare global seed here for ranstream object
 
 global_seed = 1 
-
 objref dg 
-dg = new DentateGyrus(1, global_seed)
+dg = new DentateGyrus(1, global_seed, "InitialSim")
 print dg.ngcell
+
+
+
+
+
