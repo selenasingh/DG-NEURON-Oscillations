@@ -38,13 +38,6 @@
             init_to_file_ 	= 0		// save potential of all cells/compartments to file @ end of run (to be used for init the network later again)
 */
 
-// Pre-load cell templates
-err_ = load_file("GC.hoc")
-err_ = load_file("BC.hoc")
-err_ = load_file("MC.hoc")
-err_ = load_file("HIPP.hoc")
-err_ = load_file("PP.hoc")
-
 begintemplate DentateGyrus
     // Public methods
     public init, run
@@ -113,11 +106,6 @@ begintemplate DentateGyrus
 
         // Parameter modifications
         yim_param_modifications(fig)
-
-        // Create network
-        make_cells()
-        make_input_stimulation
-        make_connections()
 
     }
 
@@ -1271,6 +1259,11 @@ begintemplate DentateGyrus
     }
 
     proc run() {local i, j localobj cvode 
+        // MAKE NETWORK
+        make_cells()
+        make_input_stimulation
+        make_connections()
+
         // INITIALIZE OPTIMIZER 
         cvode = new CVode()
 
