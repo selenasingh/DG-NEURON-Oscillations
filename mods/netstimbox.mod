@@ -86,7 +86,7 @@ NET_RECEIVE (w) {
         	if (event < 0) {
         	         event = 0
         	}
-		printf ("NetStimBox: Send spike at: %f\n",event)
+		: printf ("NetStimBox: Send spike at: %f\n",event)
 		net_event(event)
 	}
 	status = 0			: switch it off 
