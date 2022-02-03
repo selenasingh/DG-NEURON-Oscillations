@@ -33,7 +33,6 @@ nrnivmodl mods
 strdef netlabel
 netlabel = "MyDG"
 
-
 random_seed = 1
 
 objref dg
@@ -41,7 +40,6 @@ dg = new DentateGyrus(netlabel, random_seed)
 dg.run() 
 
 ```
-
 
 ## Changes 
 
