@@ -70,7 +70,10 @@ begintemplate DentateGyrus
 
     // Network related declarations
     public ngcell, nbcell, nmcell, nhcell, npp, nmcell_per_lamella, ntotal
-    public p_sprouted_
+    public p_sprouted_, scale_gpas_dg_, scale_sk_dg_, scale_kir_, scale_gabaa_, 
+    public scale_PP_strength, scale_PP2BC_strength, scale_PP2HC_strength, 
+    public scale_HC2GC_strength, scale_MC2GC_strength, scale_GC2BC_strength, 
+    public scale_BC2GC_strength
     public cells, nclist
     objref cells , Gcell[500], Bcell[6], Mcell[15], Hcell[6]
     objref PPSt[100], PPSt_noise[100]
@@ -133,7 +136,7 @@ begintemplate DentateGyrus
         */
         dt = 0.1            // simulation time step [ms]
         tstop = 200         // total simulation time [ms]
-        trial = $1          // trialnumber = seed of simulation
+        trial = $1          // trialnumber = seed of simulation [ GENERALIZE ]
         trial_noise = 1     // seed for noise to PP
         rseed  = $1         // pseudorandom number generator seed
         debug_ = 2
@@ -226,6 +229,9 @@ begintemplate DentateGyrus
 
     proc set_neuron_population_params(){
         /* Initialize the number of cells of each type in the networks
+
+        TODO: 
+            - Generalize to allow these to vary
         */
         ngcell = 500		    // number of GCs 
         nbcell = 6              // number of BCs (Samathakumar 2005)
