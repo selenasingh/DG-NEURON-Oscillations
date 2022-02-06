@@ -1,0 +1,31 @@
+// Modified by Abraham Nunes / 2022
+//      Removed dependency on an external global variables to be 
+//      better contained.
+begintemplate RandomStream
+    public r, repick, start, stream
+    objref r
+    proc init() {
+        /* Initializes random stream
+
+        Arguments: 
+            $1 : int : Stream ID
+            $2 : int : Seed 
+        */
+        stream = $1
+        random_stream_offset_ = 1000
+        r = new Random()
+        start($2)
+    }
+    func start() {
+        /* Resets the RNG
+
+        Arguments: 
+            $1 : int : Seed
+
+        */
+        return r.MCellRan4(stream*random_stream_offset_ + 1 + $1)
+    }
+    func repick() {
+        return r.repick()
+    }
+endtemplate RandomStream
