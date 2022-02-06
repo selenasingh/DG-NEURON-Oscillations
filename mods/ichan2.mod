@@ -49,9 +49,9 @@ A. Hanuschkin(c) 2011,2012
 ENDCOMMENT
  
 UNITS {
-        (mA) =(milliamp)
-        (mV) =(millivolt)
-        (uF) = (microfarad)
+    (mA) =(milliamp)
+    (mV) =(millivolt)
+    (uF) = (microfarad)
 	(molar) = (1/liter)
 	(nA) = (nanoamp)
 	(mM) = (millimolar)
@@ -65,8 +65,8 @@ NEURON {
 SUFFIX ichan2
 
 : ION usage block
-USEION na READ ena WRITE ina VALENCE 1			: Na current
-USEION k READ ek WRITE ik  				: K current
+USEION na READ ena WRITE ina VALENCE 1		: Na current
+USEION k READ ek WRITE ik  				    : K current
 NONSPECIFIC_CURRENT il, igabaa 				: leak current
 
 : range variable definition block,
@@ -81,16 +81,16 @@ RANGE gl, el, ina, ik, il, ggabaa, igabaa, egabaa	: gbar and reversal poti for l
 : Variables whose values are normally specified by the user are parameters, and are declared in a PARAMETER block.
 : Variables in the parameter section will have global scope
 PARAMETER {						
-        :v (mV) 
-        :celsius = 6.3 (degC)
-        :dt (ms) 
+    :v (mV) 
+    :celsius = 6.3 (degC)
+    :dt (ms) 
 
-        gnatbar (mho/cm2)   				: Na (gbar and reversal poti)
-        ena  	(mV)	
+    gnatbar (mho/cm2)   				: Na (gbar and reversal poti)
+    ena  	(mV)	
 		
 	gkfbar 	(mho/cm2)				: K  (gbar(slow/fast), reversal is ek)
 	gksbar = 0 (mho/cm2)	                        : init to 0 (not included in BC, HIPP and MC) <ah>
-        ek     	(mV)                      
+    ek     	(mV)                      
 
 	gl 	(mho/cm2)    				: leak (gbar and reversal poti)
  	el 	(mV)
@@ -115,11 +115,11 @@ ASSIGNED {
         dt (ms) 
 	
 : 2) 
-        gna (mho/cm2) 					: Na
-        ina (mA/cm2)
+    gna (mho/cm2) 					: Na
+    ina (mA/cm2)
 	
-        gkf (mho/cm2)					: K
-        gks (mho/cm2)
+    gkf (mho/cm2)					: K
+    gks (mho/cm2)
 	ik (mA/cm2)
 
 	il (mA/cm2)					: leak 
@@ -135,12 +135,12 @@ ASSIGNED {
 : This block is evaluated every time step. 
 BREAKPOINT {
 	SOLVE states					: here the state variables are updated 
-        gna = gnatbar*m*m*m*h  			: calculated g at timepoint t
-        gkf = gkfbar*nf*nf*nf*nf
-        gks = gksbar*ns*ns*ns*ns
+    gna = gnatbar*m*m*m*h  			: calculated g at timepoint t
+    gkf = gkfbar*nf*nf*nf*nf
+    gks = gksbar*ns*ns*ns*ns
 
-        ina = gna*(v - ena)				: calculated currents flowing
-       	ik = gkf*(v-ek) + gks*(v-ek)
+    ina = gna*(v - ena)				: calculated currents flowing
+    ik = gkf*(v-ek) + gks*(v-ek)
 	il = gl*(v-el)
 	igabaa = ggabaa*(v-egabaa)
 }
@@ -153,8 +153,8 @@ INITIAL {
 	
 	m = minf
 	h = hinf
-        nf = nfinf
-        ns = nsinf
+    nf = nfinf
+    ns = nsinf
 	
 	VERBATIM
 	return 0;
@@ -178,46 +178,51 @@ PROCEDURE states() {	: Computes state variables m, h, and n
 
 :Computes rate and other constants at current v.
 PROCEDURE rates(v) {  
-        LOCAL  alpha, beta, sum
-        q10 = 3^((celsius - 6.3)/10)
-                :"m" sodium activation system - act and inact cross at -40	: shifted by 68mV compared to in Aradi 1999/2002
+    LOCAL  alpha, beta, sum
+    q10 = 3^((celsius - 6.3)/10)
+
+    :"m" sodium activation system - act and inact cross at -40	: shifted by 68mV compared to in Aradi 1999/2002
 	alpha = -0.3*vtrap((v+60-17),-5)		: in Aradi 1999: alpha = -0.3*vtrap((v-25),-5); in Aradi 2002: alpha = 0.3*vtrap((v-25),-5) <ah>
 	beta = 0.3*vtrap((v+60-45),5)			: in Aradi 1999: beta = 0.3*vtrap((v-53),5);  in Aradi 2002:  beta = -0.3*vtrap((v-53),5) <ah>
 	sum = alpha+beta        
-	mtau = 1/sum      minf = alpha/sum
-                :"h" sodium inactivation system		: shifted by 68mV compared to in Aradi 1999/2002
+	mtau = 1/sum      
+    minf = alpha/sum
+    
+    :"h" sodium inactivation system		    : shifted by 68mV compared to in Aradi 1999/2002
 	alpha = 0.23/exp((v+60+5)/20)			: in Aradi 1999/2002:  alpha = 0.23/exp((v-3)/20) <ah>
-	beta = 3.33/(1+exp((v+60-47.5)/-10))		: in Aradi 1999/2002:  beta = 3.33/(1+exp((v-55.5)/-10)) <ah>
+	beta = 3.33/(1+exp((v+60-47.5)/-10))	: in Aradi 1999/2002:  beta = 3.33/(1+exp((v-55.5)/-10)) <ah>
 	sum = alpha+beta
 	htau = 1/sum 
-        hinf = alpha/sum 
+    hinf = alpha/sum 
 
-
-             :"ns" sKDR activation system		: shifted by 65mV compared to Aradi 1999 <ah>
-        alpha = -0.028*vtrap((v+65-35),-6)		: in Aradi 1999: alpha = -0.028*vtrap((v-35),-6) 
+    :"ns" sKDR activation system		    : shifted by 65mV compared to Aradi 1999 <ah>
+    alpha = -0.028*vtrap((v+65-35),-6)		: in Aradi 1999: alpha = -0.028*vtrap((v-35),-6) 
 	beta = 0.1056/exp((v+65-10)/40)			: in Aradi 1999: beta = 0.1056/exp((v-10)/40)   
 	sum = alpha+beta        			
-	nstau = 1/sum      nsinf = alpha/sum		
-            :"nf" fKDR activation system		: shifted by 65mV compared to Aradi 1999/2002 <ah>
-        alpha = -0.07*vtrap((v+65-47),-6)		: in Aradi 1999: alpha = -0.07*vtrap((v-47),-6); in Aradi 2002: alpha = 0.07*vtrap((v-47),-6) <ah>
+	nstau = 1/sum      
+    nsinf = alpha/sum		
+    
+    :"nf" fKDR activation system		    : shifted by 65mV compared to Aradi 1999/2002 <ah>
+    alpha = -0.07*vtrap((v+65-47),-6)		: in Aradi 1999: alpha = -0.07*vtrap((v-47),-6); in Aradi 2002: alpha = 0.07*vtrap((v-47),-6) <ah>
 	beta = 0.264/exp((v+65-22)/40)			: in Aradi 1999/2002: beta = 0.264/exp((v-22)/40)  // probably typo in Aradi & Soltez 2002 there: beta = 0.264/exp((v-22)/4) <ah>
 	sum = alpha+beta        
-	nftau = 1/sum      nfinf = alpha/sum
+	nftau = 1/sum      
+    nfinf = alpha/sum
 }
 
 : Computes rate and other constants at current v. 
 PROCEDURE trates(v) {  
 	LOCAL tinc
-        : TABLE minf, mexp, hinf, hexp, nfinf, nfexp, nsinf, nsexp, mtau, htau, nftau, nstau   : <ah>
+    : TABLE minf, mexp, hinf, hexp, nfinf, nfexp, nsinf, nsexp, mtau, htau, nftau, nstau   : <ah>
 	: DEPEND dt, celsius FROM -100 TO 100 WITH 200					       : <ah>
                            
 	rates(v)	: not consistently executed from here if usetable_hh == 1
 			: so don't expect the tau values to be tracking along with
 			: the inf values in hoc
 
-        tinc = -dt * q10
-        mexp = 1 - exp(tinc/mtau)
-        hexp = 1 - exp(tinc/htau)
+    tinc = -dt * q10
+    mexp = 1 - exp(tinc/mtau)
+    hexp = 1 - exp(tinc/htau)
 	nfexp = 1 - exp(tinc/nftau)
 	nsexp = 1 - exp(tinc/nstau)
 }

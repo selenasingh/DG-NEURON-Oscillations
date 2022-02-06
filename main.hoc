@@ -1,12 +1,12 @@
 // Load cell templates 
-err_ = load_file("GC.hoc")
-err_ = load_file("BC.hoc")
-err_ = load_file("MC.hoc")
-err_ = load_file("HIPP.hoc")
-err_ = load_file("PP.hoc")
+err_ = load_file("objects/GC.hoc")
+err_ = load_file("objects/BC.hoc")
+err_ = load_file("objects/MC.hoc")
+err_ = load_file("objects/HIPP.hoc")
+err_ = load_file("objects/PP.hoc")
 
 // Load Network
-err_ = load_file("DentateGyrus.hoc")
+err_ = load_file("objects/DentateGyrus.hoc")
 
 // Run network
 random_state = 1
