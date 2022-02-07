@@ -14,8 +14,7 @@ Scripts were tested on Windows 10 and Arch Linux.
 ### Unix machines 
 
 ``` bash
-nrnivmodl mods 
-.x86_64/special main.hoc 
+sh run.sh
 
 ```
 ### Windows 
