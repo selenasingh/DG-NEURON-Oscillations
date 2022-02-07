@@ -3,7 +3,7 @@
 #       Functions for analysis of data, I/O, plotting, etc.
 #
 #######################################################################
-using DataFrames, CSV, Plots, PyCall, LsqFit
+using DataFrames, CSV, Plots, PyCall, LsqFit, LaTeXStrings, Statistics
 np = pyimport("numpy")
 ss = pyimport("scipy.stats")
 
@@ -18,6 +18,12 @@ Creates necessary directories if they don't yet exist.
 function create_directories_if_not_exist()
     if !("figures" ∈ readdir()) 
         mkdir("figures")
+    end
+
+    for d ∈ ["raster-plots", "pattern-separation", "voltage-tracings", "fi-curves"]
+        if !(d ∈ readdir("figures"))
+            mkdir("figures/"*d)
+        end
     end
 end
 
@@ -43,7 +49,7 @@ function load_spike_files(
     model_label::String,
     neuron_ids::Dict;
     neurons_per_pattern::Int64=6, 
-    data_dir::String="data/")
+    data_dir::String="data/dgnetwork/")
 
     df = DataFrame()
     for p ∈ patterns
@@ -52,24 +58,28 @@ function load_spike_files(
         spikes = CSV.read(spike_fname, delim="\t", header=0, DataFrame)
         stimin = CSV.read(stims_fname, delim="\t", header=0, DataFrame)
 
-        rename!(spikes, ["Time", "Neuron"])
-        spikes[:,"Population"] .= "" 
-        spikes[:,"Pattern"] .= p
-        spikes[:,"NeuronsPerPattern"] .= neurons_per_pattern 
-        spikes[:,"Model"] .= model_label
-        for k ∈ keys(neuron_ids) 
-            lb, ub = neuron_ids[k]
-            spikes[lb .<= spikes[:, "Neuron"] .< ub, "Population"] .= k
+        if size(spikes, 1) > 0
+            rename!(spikes, ["Time", "Neuron"])
+            spikes[:,"Population"] .= "" 
+            spikes[:,"Pattern"] .= p
+            spikes[:,"NeuronsPerPattern"] .= neurons_per_pattern 
+            spikes[:,"Model"] .= model_label
+            for k ∈ keys(neuron_ids) 
+                lb, ub = neuron_ids[k]
+                spikes[lb .<= spikes[:, "Neuron"] .< ub, "Population"] .= k
+            end
+
+            df = [df; spikes]
+        end 
+
+        if size(stimin, 1) > 0
+            rename!(stimin, ["Time", "Neuron"])
+            stimin[:,"Population"] .= "PP"
+            stimin[:,"Pattern"] .= p
+            stimin[:,"NeuronsPerPattern"] .= neurons_per_pattern 
+            stimin[:,"Model"] .= model_label
+            df = [df; stimin]
         end
-
-        df = [df; spikes]
-
-        rename!(stimin, ["Time", "Neuron"])
-        stimin[:,"Population"] .= "PP"
-        stimin[:,"Pattern"] .= p
-        stimin[:,"NeuronsPerPattern"] .= neurons_per_pattern 
-        stimin[:,"Model"] .= model_label
-        df = [df; stimin]
     end
 
     return df

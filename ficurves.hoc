@@ -3,14 +3,14 @@ err_ = load_file("objects/GC.hoc")
 
 print_voltage_tracings = 1
 
-tstop = 1000
+tstop = 2000
 delay = 50
 duration = tstop - 2*delay 
 
 n_steps = 20
 v_init = -77.71 
 i_min = 0
-i_max = 0.5
+i_max = 0.4
 i_step = (i_max - i_min)/n_steps
 
 objref tdata, vdata[n_steps+1], vdatalist, spikes[n_steps+1]
@@ -22,26 +22,29 @@ vm_filename = "ficurve-vm.txt"
 ficurve_filename = "ficurve.txt"
 
 
-objref na_scales, k_scales, ht_gbars, lt_gbars
+objref na_scales, kdr_scales, ka_scales, ht_gbars, lt_gbars, size_scales
 na_scales = new Vector()
 na_scales.append(1, 0.034/0.033, 0.026/0.033)
 
-k_scales = new Vector() 
-k_scales.append(1, 1.15, 1.3)
+kdr_scales = new Vector() 
+kdr_scales.append(1, 1.15, 1.3)
+
+ka_scales = new Vector() 
+ka_scales.append(1, 0.0096/0.008, 0.0104/0.008)
 
 ht_gbars = new Vector() 
 ht_gbars.append(0.0004, 0.0008, 0.0004)
 //ht_gbars.append(0.000, 0.000, 0.000)
 
 lt_gbars = new Vector() 
-lt_gbars.append(0.0002, 0.0002, 0.0002)
-//lt_gbars.append(0.000, 0.000, 0.000)
+//lt_gbars.append(0.0002, 0.0002, 0.0002)
+lt_gbars.append(0.000, 0.000, 0.000)
 
 
 for s=0, 2 {
     current_steps = new Vector()
     for i = 0, n_steps { 
-        cells[i] = new GranuleCell(i, na_scales.x[s], k_scales.x[s], ht_gbars.x[s], lt_gbars.x[s]) 
+        cells[i] = new GranuleCell(i, na_scales.x[s], kdr_scales.x[s], ka_scales.x[s], ht_gbars.x[s]) 
         cells[i].soma stim[i] = new IClamp(0.5)
         stim[i].del = delay
         stim[i].dur = duration 
@@ -69,14 +72,14 @@ for s=0, 2 {
     fifile.aopen(ficurve_filename)
     for i = 0, n_steps {
         spikes[i].spikebin(vdata[i], 0)
-        fifile.printf("%f\t%f\t%f\t%f\t%f\t%f\n", current_steps.x[i], spikes[i].sum()/(duration/1000), na_scales.x[s], k_scales.x[s], ht_gbars.x[s], lt_gbars.x[s])
+        fifile.printf("%f\t%f\t%f\t%f\t%f\t%f\t%f\n", current_steps.x[i], spikes[i].sum()/(duration/1000), na_scales.x[s], kdr_scales.x[s], ka_scales.x[s], ht_gbars.x[s], lt_gbars.x[s])
     }
     fifile.close()
 
     if (print_voltage_tracings == 1) {
         // Save voltage traces 
         vmfile = new File()
-        sprint(vm_filename, "vm-%f.txt", s)
+        sprint(vm_filename, "%svm-%f.txt", "data/fi-curves/", s)
         vmfile.aopen(vm_filename)
         for j = 0, tdata.size - 1 {
             for i = 0, n_steps {

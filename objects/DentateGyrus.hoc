@@ -32,10 +32,6 @@
             - DGVt_name_
             - print_Vtrace
             - print_Raster
-
-        - Remove references to the following: 
-            init_from_file_ = 0		// read in initial potential of all cells/compartments from file 
-            init_to_file_ 	= 0		// save potential of all cells/compartments to file @ end of run (to be used for init the network later again)
 */
 
 
@@ -70,9 +66,9 @@ begintemplate DentateGyrus
 
     // Network related declarations
     public ngcell, nbcell, nmcell, nhcell, npp, nmcell_per_lamella, ntotal
-    public p_sprouted_, scale_gpas_dg_, scale_sk_dg_, scale_kir_, scale_gabaa_, 
-    public scale_PP_strength, scale_PP2BC_strength, scale_PP2HC_strength, 
-    public scale_HC2GC_strength, scale_MC2GC_strength, scale_GC2BC_strength, 
+    public p_sprouted_, scale_gpas_dg_, scale_sk_dg_, scale_kir_, scale_gabaa_
+    public scale_PP_strength, scale_PP2BC_strength, scale_PP2HC_strength
+    public scale_HC2GC_strength, scale_MC2GC_strength, scale_GC2BC_strength 
     public scale_BC2GC_strength
     public cells, nclist
     objref cells , Gcell[500], Bcell[6], Mcell[15], Hcell[6]
@@ -92,13 +88,13 @@ begintemplate DentateGyrus
         Arguments: 
             $s1 : str : A label for this simulation 
             $2  : int : Random state (global RNG seed)
+            $s3 : str : Name of the group being simulated
         */
-        strdef idname
+        strdef idname, group
         idname = $s1
-        
-        fig = 1 // Will change this to be less specific for Yim et al. net
         random_state = $2
-        
+        group = $s3
+
         // Specify directory to save data
         // [ TODO ] - Allow this to be changed optionally
         //              without having to specify it 
@@ -106,7 +102,7 @@ begintemplate DentateGyrus
         //              how one can specify default
         //              arguments to functions in NEURON
         strdef datadir
-        datadir = "data/"
+        datadir = "data/dgnetwork/"
 
         // Simulation and data storage parameters
         set_simulation_parameters(random_state)
@@ -121,7 +117,8 @@ begintemplate DentateGyrus
         set_pseudorandom_number_generators()
 
         // Parameter modifications
-        yim_param_modifications(fig)
+        bd_param_settings(group)
+        //yim_param_modifications(fig)
 
     }
 
@@ -214,11 +211,8 @@ begintemplate DentateGyrus
         strdef suffix 
         suffix = "txt"
 
-        strdef init_state_fname_
-        init_state_fname_ = "NetworkState_init_10Hz.dat"
-
         // Flags about what to print
-        print_Vtrace 	= 1             // print voltage trace to file
+        print_Vtrace 	= 0             // print voltage trace to file
         print_Raster 	= 1             // print spike raster to file
         print_template 	= 1             // write out spike sequence into template file
         print_GC_sprouting_input_ = 0	// calculates and print out GC sprouting input number distribution
@@ -273,17 +267,17 @@ begintemplate DentateGyrus
 
         */
         p_sprouted_ = 0     // proportion of other GCs to which a GC will connect 
-        scale_gpas_dg_       = 100    // scaling [%] of gpas of th GC model (100% in the original file)
-        scale_sk_dg_         = 100    // scaling of Ca-dependent K (SK) of th GC model (100% in the original file)
-        scale_kir_           = 100    // scaling of KIR conductance in GC model
-        scale_gabaa_         = 100    // scaling of GABAA in GC model
-        scale_PP_strength    = 10    	// scaling of synaptic weight of PP
-        scale_PP2BC_strength = 100    // scaling of synaptic weight PP->BC (100% for original value which was 50% of PP->GC strength..)
+        scale_gpas_dg_       = 1      // scaling [%/100] of gpas of th GC model
+        scale_sk_dg_         = 1      // scaling of Ca-dependent K (SK) of th GC model
+        scale_kir_           = 1      // scaling of KIR conductance in GC model
+        scale_gabaa_         = 1      // scaling of GABAA in GC model
+        scale_PP_strength    = 0.1    // scaling of synaptic weight of PP
+        scale_PP2BC_strength = 1      // scaling of synaptic weight PP->BC (100% for original value which was 50% of PP->GC strength..)
         scale_PP2HC_strength = 0      // scaling of synaptic weight PP->HIPP (set to 0% for Santhakumar because there no PP->HIPP connections...)
-        scale_HC2GC_strength = 100    // scaling of synaptic weight HC->GC (beta_HIPP in Myers and Scharfman, 2009)
-        scale_MC2GC_strength = 100    // scaling of synaptic weight MC->GC (beta_HIPP in Myers and Scharfman, 2009)
-        scale_GC2BC_strength = 300    // scaling of synaptic weight GC->BC
-        scale_BC2GC_strength = 300    // scaling of synaptic weight BC->GC
+        scale_HC2GC_strength = 1      // scaling of synaptic weight HC->GC (beta_HIPP in Myers and Scharfman, 2009)
+        scale_MC2GC_strength = 1      // scaling of synaptic weight MC->GC (beta_HIPP in Myers and Scharfman, 2009)
+        scale_GC2BC_strength = 3      // scaling of synaptic weight GC->BC
+        scale_BC2GC_strength = 3      // scaling of synaptic weight BC->GC
 
     }
 
@@ -296,40 +290,94 @@ begintemplate DentateGyrus
         */
         fig = $1
         if (fig == 1) {
-            scale_PP_strength   = 10
-            scale_kir_          = 100
-            scale_gabaa_        = 100
+            scale_PP_strength   = 0.10
+            scale_kir_          = 1
+            scale_gabaa_        = 1
             p_sprouted_         = 0
         }
 
         if (fig == 2) {
-            scale_PP_strength   = 10
-            scale_kir_          = 100
-            scale_gabaa_        = 100
-            p_sprouted_         = 30
+            scale_PP_strength   = 0.1
+            scale_kir_          = 1
+            scale_gabaa_        = 1
+            p_sprouted_         = 0.3
         }
 
         if (fig == 3) {
-            scale_PP_strength   = 10
-            scale_kir_          = 400
-            scale_gabaa_        = 400
-            p_sprouted_         = 30
+            scale_PP_strength   = 0.1
+            scale_kir_          = 4.
+            scale_gabaa_        = 4.
+            p_sprouted_         = 0.3
         }
 
         if (fig == 4) {
-            scale_PP_strength   = 16
-            scale_kir_          = 100
-            scale_gabaa_        = 100
-            p_sprouted_         = 10
+            scale_PP_strength   = 0.16
+            scale_kir_          = 1.
+            scale_gabaa_        = 1.
+            p_sprouted_         = 0.1
         }
 
         if (fig == 5) {
-            scale_PP_strength   = 16
-            scale_kir_          = 400
-            scale_gabaa_        = 400
-            p_sprouted_         = 10
+            scale_PP_strength   = 0.16
+            scale_kir_          = 4.
+            scale_gabaa_        = 4.
+            p_sprouted_         = 0.1
         }
     } 
+
+    proc bd_param_settings() {
+        /* Sets different parameters for bipolar disorder related 
+            experiments
+
+        Arguments:
+            $s1 : str : Which group we are simulating
+
+        Notes: 
+            - We can change HT and LT later.
+        */
+
+        // Healthy control neurons 
+        if (strcmp($s1, "HC") == 0) {
+            scale_na_conductances = 1
+            scale_kdr_conductances = 1
+            scale_ka_conductances = 1
+            gbar_ht_ = 0.0004 
+            gbar_lt_ = 0
+            scale_size_ = 1
+            scale_gpas_dg_ = 1
+            scale_sk_dg_ = 1
+            scale_gabaa_ = 1
+            scale_kir_ = 0
+        }
+
+        // Lithium Responders 
+        if (strcmp($s1, "LR") == 0) {
+            scale_na_conductances = 1.03
+            scale_kdr_conductances = 1.15
+            scale_ka_conductances = 0.0096/0.008
+            gbar_ht_ = 0.0008 
+            gbar_lt_ = 0
+            scale_size_ = 1
+            scale_gpas_dg_ = 1
+            scale_sk_dg_ = 1
+            scale_gabaa_ = 1
+            scale_kir_ = 0
+        }
+
+        // Lithium Nonresponders 
+        if (strcmp($s1, "NR") == 0) {
+            scale_na_conductances = 0.026/0.033
+            scale_kdr_conductances = 1.3
+            scale_ka_conductances = 0.0104/0.008
+            gbar_ht_ = 0.0004 
+            gbar_lt_ = 0
+            scale_size_ = 1
+            scale_gpas_dg_ = 1
+            scale_sk_dg_ = 1
+            scale_gabaa_ = 1
+            scale_kir_ = 0
+        }
+    }
 
     // ########################################################################
     //  FUNCTIONS FOR SETTING UP CELLS/INPUTS
@@ -341,7 +389,7 @@ begintemplate DentateGyrus
         cells = new List()
 
         // Create populations 
-        for i=0, ngcell-1 {Gcell[i] = new GranuleCell(i,scale_gpas_dg_, scale_sk_dg_, scale_gabaa_, scale_kir_)}
+        for i=0, ngcell-1 {Gcell[i] = new GranuleCell(i,scale_na_conductances, scale_kdr_conductances, scale_ka_conductances, gbar_ht_, gbar_lt_, scale_size_, scale_gpas_dg_, scale_sk_dg_, scale_gabaa_, scale_kir_)}
         for i=0, nbcell-1 {Bcell[i] = new BasketCell(i)}
         for i=0, nmcell-1 {Mcell[i] = new MossyCell(i)}
         for i=0, nhcell-1 {Hcell[i] = new HIPPCell(i)}
@@ -545,15 +593,15 @@ begintemplate DentateGyrus
                 if ((print_stim_==1) && (i<npp)) {
                     if (pprec.x[j] == 0) {
                         // record input sequence to first neuron for debug purpose only....
-                        nc_append_rec(j+ngcell+nbcell+nmcell+nhcell, i, 0, 2e-2*scale_PP_strength/100., 3, 10, vec_stim[j]) 
+                        nc_append_rec(j+ngcell+nbcell+nmcell+nhcell, i, 0, 2e-2*scale_PP_strength, 3, 10, vec_stim[j]) 
                         pprec.x[j] = 1
                     } else {
                         // record input sequence to first neuron for debug purpose only....
-                        nc_append(j+ngcell+nbcell+nmcell+nhcell, i, 0, 2e-2*scale_PP_strength/100., 3, 10)
+                        nc_append(j+ngcell+nbcell+nmcell+nhcell, i, 0, 2e-2*scale_PP_strength, 3, 10)
                     }
                 } else {
                     // connect PP to GC[j],syn[0],wt,del,threshold   <AH> NOTE both synapses are equal, ie. weight delay (except position) not important
-                    nc_append(j+ngcell+nbcell+nmcell+nhcell, i, 0, 2e-2*scale_PP_strength/100., 3, 10)
+                    nc_append(j+ngcell+nbcell+nmcell+nhcell, i, 0, 2e-2*scale_PP_strength, 3, 10)
                 }
             }
             
@@ -584,7 +632,7 @@ begintemplate DentateGyrus
                     pp2bc.x[j] = 1
                     
                     // connect PP to BC[j],syn[0],wt,del,threshold   <AH> NOTE both synapses are equal
-                    nc_append(j+ngcell+nbcell+nmcell+nhcell, i, 0, 1e-2*scale_PP_strength/100.*scale_PP2BC_strength/100., 3, 10)
+                    nc_append(j+ngcell+nbcell+nmcell+nhcell, i, 0, 1e-2*scale_PP_strength*scale_PP2BC_strength, 3, 10)
                 }
 
                 // Print debugging message 
@@ -613,7 +661,7 @@ begintemplate DentateGyrus
                     pp2hc.x[j] = 1
                     
                     // used here synaptic strength of GC->HIPP / connections PP-> HIPP not in Santhakumar 2005
-                    nc_append(j+ngcell+nbcell+nmcell+nhcell, i+ngcell+nbcell+nmcell, 0, 0.5e-3*scale_PP_strength/100.*scale_PP2HC_strength/100., 3, 10)
+                    nc_append(j+ngcell+nbcell+nmcell+nhcell, i+ngcell+nbcell+nmcell, 0, 0.5e-3*scale_PP_strength*scale_PP2HC_strength, 3, 10)
 
                 }
                 if (debug_ == 3) {
@@ -665,7 +713,7 @@ begintemplate DentateGyrus
                 // [ TODO ] - ALLOW FOR DIFFERENT NUMBER OF MAX SYNAPSES
                 if (vgc2bc.x[npost] < 90) { 					
                     // connect GC[i] to BC[j],syn[2]+dendritic_var,wt,del,threshold
-                    nc_append(i, ngcell+npost, dbr+2, 4.7e-3*scale_GC2BC_strength/100., .8, 10)
+                    nc_append(i, ngcell+npost, dbr+2, 4.7e-3*scale_GC2BC_strength, .8, 10)
                     
                     if (debug_ == 0 ) { 
                         print "GC \t",i,"\t to BC\t\t",npost,"\t",dbr+2 
@@ -804,7 +852,7 @@ begintemplate DentateGyrus
                 c1 = cells.object(npost)
                 c2 = cells.object(i+ngcell)
                 if ((is_connected(c1, c2) == 0) && (vbc2gc.x[npost] < max_conn)) {	// change < 2 to < 4
-                    nc_append(i+ngcell, npost, 6, 1.6e-3*scale_BC2GC_strength/100, .85, -10)  
+                    nc_append(i+ngcell, npost, 6, 1.6e-3*scale_BC2GC_strength, .85, -10)  
                     vbc2gc.x[npost] +=1
                     if (debug_ == 1 ) { print i, npost, 6 }
                 } else {
@@ -885,7 +933,7 @@ begintemplate DentateGyrus
                 c1 = cells.object(npost1)
                 c2 = cells.object(i+ngcell+nbcell)
                 if ((is_connected(c1, c2) == 0) && (vmc2gc.x[npost1] < 7))  {
-                    nc_append(i+ngcell+nbcell, npost1, dbr+2, 0.3e-3*scale_MC2GC_strength/100., 3, 10)
+                    nc_append(i+ngcell+nbcell, npost1, dbr+2, 0.3e-3*scale_MC2GC_strength, 3, 10)
                     vmc2gc.x[npost1] +=1
                 } else { 
                     j -= 1	
@@ -902,7 +950,7 @@ begintemplate DentateGyrus
                 c1 = cells.object(npost2)
                 c2 = cells.object(i+ngcell+nbcell)
                 if ((is_connected(c1, c2) == 0) && (vmc2gc.x[npost2] < 7))  {
-                    nc_append(i+ngcell+nbcell, npost2, dbr+2, 0.3e-3*scale_MC2GC_strength/100., 3, 10)  // Gcell[3] to Bcell[1]
+                    nc_append(i+ngcell+nbcell, npost2, dbr+2, 0.3e-3*scale_MC2GC_strength, 3, 10)  // Gcell[3] to Bcell[1]
                     vmc2gc.x[npost2] +=1
                 } else { 
                     j -= 1	 
@@ -990,7 +1038,7 @@ begintemplate DentateGyrus
                 c1 = cells.object(npost) 
                 c2 = cells.object(i+ngcell+nbcell+nmcell)
                 if ((is_connected(c1, c2) == 0) && (vhc2gc.x[npost] < max_conn))  {		                    
-                    nc_append(i+ngcell+nbcell+nmcell, npost, dbr+4, 0.5e-3*scale_HC2GC_strength/100., 1.6, 10) 
+                    nc_append(i+ngcell+nbcell+nmcell, npost, dbr+4, 0.5e-3*scale_HC2GC_strength, 1.6, 10) 
                     vhc2gc.x[npost] +=1
                     if (debug_ == 1 ) {print i, npost, dbr+4}
                 } else {
@@ -1281,11 +1329,9 @@ begintemplate DentateGyrus
 
         // RUN SIMULATION 
         print "Running simulation."
+        // Write connections to file 
+        save_network_connections()
         for (PP_box_startid_ = 0; PP_box_startid_ <= 12; PP_box_startid_ += 1 ) { 
-            // [ TODO ] Check to see if these are always the same. If they are, 
-            //          then this should be outside of the loop.
-            save_network_connections()
-
             initialize_simulation_run(100)
 
             // File header voltage output file

@@ -1,16 +1,30 @@
-// Load cell templates 
+// Load cell templates and network 
 err_ = load_file("objects/GC.hoc")
 err_ = load_file("objects/BC.hoc")
 err_ = load_file("objects/MC.hoc")
 err_ = load_file("objects/HIPP.hoc")
 err_ = load_file("objects/PP.hoc")
-
-// Load Network
 err_ = load_file("objects/DentateGyrus.hoc")
 
-// Run network
-random_state = 1
-objref dg
-dg = new DentateGyrus("sprouted", random_state)
-dg.p_sprouted_ = 10
-dg.run()
+// Instantiate cell objects and labels
+objref hc, lr, nr
+strdef hclab, lrlab, nrlab 
+
+// Do 10 Runs for each network setting
+for random_state = 1, 10 {
+    sprint(hclab, "%s-%d", "HC", random_state)
+    sprint(lrlab, "%s-%d", "LR", random_state)
+    sprint(nrlab, "%s-%d", "NR", random_state)
+    hc = new DentateGyrus(hclab, random_state, "HC")
+    lr = new DentateGyrus(lrlab, random_state, "LR")
+    nr = new DentateGyrus(nrlab, random_state, "NR")
+
+    print "RUNNING DENTATE GYRUS ", hclab
+    hc.run()
+
+    print "RUNNING DENTATE GYRUS ", lrlab
+    lr.run() 
+
+    print "RUNNING DENTATE GYRUS ", nrlab
+    nr.run()
+}
