@@ -7,9 +7,15 @@ This is a reimplementation of the dentate gyrus model from which the following p
 
 Our model is modified primarily from the Yim et al. (2005) implementation. Changes are listed at the end of this file.  
 
+## Contributing 
+
+Please see the `CONTRIBUTING.md` file.
+
 ## Usage 
 
-Scripts were tested on Windows 10 and Arch Linux.
+Scripts were tested on Windows 10 and Arch Linux. 
+
+__I recommend using Linux, and using the shell scripts, since this will create the necessary results/output durectories.__
 
 ### Unix machines 
 
@@ -18,6 +24,8 @@ sh run.sh
 
 ```
 ### Windows 
+
+Note that here you will need to create the directories to store results. See `run.sh` for the directory names.
 
 ```powershell
 nrnivmodl mods 
