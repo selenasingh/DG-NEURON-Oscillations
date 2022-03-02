@@ -15,7 +15,7 @@ Please see the `CONTRIBUTING.md` file.
 
 Scripts were tested on Windows 10 and Arch Linux. 
 
-__I recommend using Linux, and using the shell scripts, since this will create the necessary results/output durectories.__
+__I recommend using Linux, and using the shell scripts, since this will create the necessary results/output directories.__
 
 ### Unix machines 
 
