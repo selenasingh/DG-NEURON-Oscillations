@@ -498,9 +498,9 @@ begintemplate DentateGyrus
         connect_pp_to_bc()
         connect_pp_to_hipp()
         connect_granule_cells()
-        // connect_basket_cells()
-        // connect_mossy_cells()
-        // connect_hipp_cells()
+        connect_basket_cells()
+        connect_mossy_cells()
+        connect_hipp_cells()
     }
 
     func nc_append() {	
