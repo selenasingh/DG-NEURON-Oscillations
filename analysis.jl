@@ -3,7 +3,7 @@
 # SCRIPT TO RUN ANALYSIS 
 ####################################################################
 include("utilities.jl");
-
+default(show=false)
 
 # HYPERPARAMS
 n_runs = 10
