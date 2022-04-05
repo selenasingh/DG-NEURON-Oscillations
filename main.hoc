@@ -11,7 +11,7 @@ objref hc, lr, nr
 strdef hclab, lrlab, nrlab 
 
 // Do 10 Runs for each network setting
-for random_state = 1, 10 {
+for random_state = 1, 1 {
     sprint(hclab, "%s-%d", "HC", random_state)
     sprint(lrlab, "%s-%d", "LR", random_state)
     sprint(nrlab, "%s-%d", "NR", random_state)

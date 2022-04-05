@@ -61,7 +61,7 @@ begintemplate DentateGyrus
     objref efile            // Membrane potential storage file
 
     // Declarations related to debugging 
-    objref vec_stim[100], vec_stim_noise[100]
+    objref vec_stim[100], vec_stim_noise[500]
     objref distri_gc_input_
 
     // Network related declarations
@@ -72,7 +72,7 @@ begintemplate DentateGyrus
     public scale_BC2GC_strength
     public cells, nclist
     objref cells , Gcell[500], Bcell[6], Mcell[15], Hcell[6]
-    objref PPSt[100], PPSt_noise[100]
+    objref PPSt[100], PPSt_noise[500]
     objref rs, rslist, rs_noiselist, pp_start
     objref nclist, netcon, netcon_d[100]
     objref vgc2gc, vgc2bc, vgc2mc, vgc2hc
@@ -385,7 +385,7 @@ begintemplate DentateGyrus
     proc make_cells() {local i
         // Need to re-declare cell arrays with proper sizes
         objref Gcell[ngcell], Bcell[nbcell], Mcell[nmcell], Hcell[nhcell]
-        objref PPSt[npp], PPSt_noise[npp]
+        objref PPSt[npp], PPSt_noise[ngcell]
         cells = new List()
 
         // Create populations 
@@ -394,7 +394,10 @@ begintemplate DentateGyrus
         for i=0, nmcell-1 {Mcell[i] = new MossyCell(i)}
         for i=0, nhcell-1 {Hcell[i] = new HIPPCell(i)}
         for i=0, npp-1 	  {PPSt[i] = new PPstim(i, PP_rate_, tstop, PP_box_start_, PP_box_stop_)}
-        for i=0, npp-1    {PPSt_noise[i] = new PPstim(i, PP_rate_, tstop, PP_box_start_, PP_box_stop_)}
+        
+	// [TESTING] Adding individual stims to each cell in order to simulate spontaneous activity
+	//for i=0, npp-1    {PPSt_noise[i] = new PPstim(i, PP_rate_, tstop, PP_box_start_, PP_box_stop_)}
+        for i=0, ngcell-1    {PPSt_noise[i] = new PPstim(i, PP_rate_, tstop, 0, tstop)}
 
         // Append to cells list
         for i = 0, ngcell-1 {cells.append(Gcell[i])} 	// cells 0-499 GCs
@@ -402,7 +405,9 @@ begintemplate DentateGyrus
         for i = 0, nmcell-1 {cells.append(Mcell[i])} 	// cells 506-520 MC
         for i = 0, nhcell-1 {cells.append(Hcell[i])} 	// cells 521-526 HC
         for i = 0, npp-1 {cells.append(PPSt[i])}		// 527 - xxx PP artificial cell
-        for i = 0, npp-1 {cells.append(PPSt_noise[i])}  
+	// [TESTING] Append GC spontaneous activity generators to list
+        //for i = 0, npp-1 {cells.append(PPSt_noise[i])}  
+        for i = 0, ngcell-1 {cells.append(PPSt_noise[i])}  
     }
 
     proc make_input_stimulation() { local i
@@ -426,8 +431,8 @@ begintemplate DentateGyrus
             rs.r.uniform(0,1)
             rs.start(random_state)
         }
-        for i=0, npp-1 {
-            rs = new RandomStream(i+npp, random_state)
+        for i=0, ngcell-1 {
+            rs = new RandomStream(i+ngcell, random_state)
             rs_noiselist.append(rs)
             PPSt_noise[i].pp.noiseFromRandom(rs.r)
             rs.r.uniform(0,1)
@@ -557,7 +562,8 @@ begintemplate DentateGyrus
     }
 
     proc connect_pp_to_gc() { local i, j localobj pprec
-        /* Function that connects perforant path inputs to granule cells
+        /* Function that connects perforant path inputs to granule cells.
+	   This function also connects the spontaneous activity generators to granule cells
         */
         // Print message to indicate procedure 
         print "Connecting PP to post-synaptic targets."
@@ -568,9 +574,9 @@ begintemplate DentateGyrus
 
         // Objects to record inputs/noise for debugging [TODO] verify necessity...
         //      Must be re-declared with proper value of npp
-        objref vec_stim[npp], vec_stim_noise[npp]
+        objref vec_stim[npp], vec_stim_noise[ngcell]
         for i = 0, npp-1 { vec_stim[i] = new Vector() }
-        for i = 0, npp-1 { vec_stim_noise[i] = new Vector() }
+        for i = 0, ngcell-1 { vec_stim_noise[i] = new Vector() }
 
         // Make connections for each individual GC
         for i=0, ngcell-1 {
@@ -604,7 +610,14 @@ begintemplate DentateGyrus
                     nc_append(j+ngcell+nbcell+nmcell+nhcell, i, 0, 2e-2*scale_PP_strength, 3, 10)
                 }
             }
-            
+	    
+	    // Add spontaneous activity generator 
+            if ((print_stim_ == 1)) {
+		nc_append(i+ngcell+nbcell+nmcell+nhcell+npp, i, 0, 1e-2*scale_PP_strength, 3, 10, vec_stim_noise[i])
+            } else {
+	        nc_append(i+ngcell+nbcell+nmcell+nhcell+npp, i, 0, 1e-2*scale_PP_strength, 3, 10) 
+	    }            
+
             // Print debugging message 
             if (debug_ == 3) {
                 print "\nGC: ",i
@@ -1222,7 +1235,7 @@ begintemplate DentateGyrus
 
         // write out noise input...
         if (print_stim_noise == 1){
-            for i=0,npp-1 {
+            for i=0,ngcell-1 {
                 for j=0,vec_stim_noise[i].size()-1 {
                     stimfile.printf("%f\t%d\n",vec_stim_noise[i].x[j],i+npp)
                 }
