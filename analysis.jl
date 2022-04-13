@@ -6,9 +6,9 @@ include("utilities.jl");
 default(show=false)
 
 # HYPERPARAMS
-n_runs = 10
-patterns = 0:12
-labels = ["HC", "LR", "NR"]
+n_runs = 1
+patterns = 0:1#0:12
+labels = ["HC"]#, "LR", "NR"]
 fig_ext = ".png"
 
 # CREATE NECESSARY DIRECTORIES 
@@ -34,9 +34,7 @@ for run ∈ 1:n_runs
             for pop ∈ keys(populations)
                 lb, ub = populations[pop]
                 popspikes = spikes[(spikes.Population .== pop) .& (spikes.Pattern .== p),:]
-                #if size(popspikes,1) > 0
                 append!(plots, [raster_plot(popspikes; xlab="", ylab=pop)])
-                #end
             end
             fig = plot(reverse(plots)..., layout=grid(5, 1, heights=[0.15, 0.15, 0.15, 0.4, 0.15]), size=(400, 500))
             savefig(fig, "figures/raster-plots/raster-"*string(p)*"-"*labels[i]*"-$run"*fig_ext)
