@@ -7,8 +7,8 @@ default(show=false)
 
 # HYPERPARAMS
 n_runs = 1
-patterns = 0:1#0:12
-labels = ["HC"]#, "LR", "NR"]
+patterns = 0:12
+labels = ["HC", "LR", "NR"]
 fig_ext = ".png"
 
 # CREATE NECESSARY DIRECTORIES 
