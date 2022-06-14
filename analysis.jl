@@ -72,7 +72,11 @@ for i ∈ 1:length(labels)
             psse = std(psc[labels[i]])/sqrt(n_runs)
             pslci = round(psm - 1.96*psse, digits=2)
             psuci = round(psm + 1.96*psse, digits=2)
-            psc_label = labels[i]*" (PS="*string(psm)*" ["*string(pslci)*", "*string(psuci)*"])"
+            if n_runs > 1
+                psc_label = labels[i]*" (PS="*string(psm)*" ["*string(pslci)*", "*string(psuci)*"])"
+            else 
+                psc_label = labels[i]*" (PS="*string(psm)
+            end
         else
             psc_label = nothing
         end
