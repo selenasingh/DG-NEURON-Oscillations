@@ -22,9 +22,9 @@ populations = Dict(
     "HIPP" => [521, 527]
 )
 
-for run ∈ 1:n_runs
+for run_ ∈ 1:n_runs
     for i ∈ 1:length(labels)
-        spikes = load_spike_files(patterns, labels[i]*"-$run", populations)
+        spikes = load_spike_files(patterns, labels[i]*"-$run_", populations)
 
         # CREATE RASTER PLOTS
         for p ∈ unique(spikes.Pattern)
@@ -37,7 +37,7 @@ for run ∈ 1:n_runs
                 append!(plots, [raster_plot(popspikes; xlab="", ylab=pop)])
             end
             fig = plot(reverse(plots)..., layout=grid(5, 1, heights=[0.15, 0.15, 0.15, 0.4, 0.15]), size=(400, 500))
-            savefig(fig, "figures/raster-plots/raster-"*string(p)*"-"*labels[i]*"-$run"*fig_ext)
+            savefig(fig, "figures/raster-plots/raster-"*string(p)*"-"*labels[i]*"-$run_"*fig_ext)
         end
     end 
 end 
