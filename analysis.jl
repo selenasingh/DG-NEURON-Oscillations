@@ -6,7 +6,7 @@ include("utilities.jl");
 default(show=false)
 
 # HYPERPARAMS
-n_runs = 1
+n_runs = 10
 patterns = 0:12
 labels = ["HC", "LR", "NR"]
 fig_ext = ".png"
