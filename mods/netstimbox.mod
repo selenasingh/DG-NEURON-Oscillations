@@ -5,7 +5,7 @@
 
 NEURON	{ 
   ARTIFICIAL_CELL NetStimBox
-  RANGE start, forcestop, status, nspk
+  RANGE start, forcestop, status, nspk, freq
   THREADSAFE : only true if every instance has its own distinct Random
   POINTER donotuse
 }
@@ -15,6 +15,7 @@ PARAMETER {
 	forcestop 	= 200 (ms)	: stop of firing spikes
 	status 		= 0		: if status=0, no spike is sent
 	nspk		= 1		: number of spikes per PP input	
+	freq		= 0 
 }
 
 ASSIGNED {
@@ -49,7 +50,7 @@ VERBATIM
 	}else{
 		/* only can be used in main thread */
 		if (_nt != nrn_threads) {
-hoc_execerror("multithread random in NetStim"," only via hoc Random");
+			hoc_execerror("multithread random in NetStim"," only via hoc Random");
 		}
 ENDVERBATIM
 		: the old standby. Cannot use if reproducible parallel sim

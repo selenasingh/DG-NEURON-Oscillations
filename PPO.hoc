@@ -1,0 +1,33 @@
+// Oscillatory PP stimulus
+
+/*
+func oscillating_rate() {
+        PI = 3.14159265358979323846
+        nspk = 10*sin(2*PI*freq*(t)/1000 - 1.6)+10
+        return nspk
+    }
+
+freq = 3 
+
+for t=0, 300 {
+    if (freq == 0) {
+        print "not true"
+    }else{
+        print oscillating_rate(t, freq)
+    }
+}
+*/
+
+PP_rate_        = 10.       // rate of PP Poisson input
+PP_rate_noise_  = 0.        // rate of PP Poisson noise
+PP_box_nr_      = 80         // number of active PPs
+PP_box_stop_	= 1000.       // time of box [ms]
+PP_box_start_	= 0.        // shift of box [ms]
+PP_box_nspk_    = 1         // number of spike per active PP
+PP_freq_        = 3.         // oscillation frequency
+tstop = 1000
+
+load_file("objects/PP.hoc")
+objref PPSt[10]
+PPSt[1] = new PPstim(1, PP_rate_, tstop, PP_box_start_, PP_box_stop_, PP_freq_) 
+

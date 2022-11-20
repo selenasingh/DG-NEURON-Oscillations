@@ -48,7 +48,7 @@ function load_spike_files(
     patterns::Union{UnitRange{Int64}, Vector{Int64}}, 
     model_label::String,
     neuron_ids::Dict;
-    neurons_per_pattern::Int64=6, 
+    neurons_per_pattern::Int64=90, #
     data_dir::String="data/dgnetwork/")
 
     df = DataFrame()
@@ -103,7 +103,7 @@ function spike_train_correlation(
     n_neurons::Int64;
     delta::Int64=20, 
     n_bins::Int64=1, 
-    duration::Float64=200.0)
+    duration::Float64=1200.0)
     
     # Create kernel
     tri_rng = collect(1:round(Int64, delta/n_bins))
@@ -139,7 +139,7 @@ function pattern_separation_curve(
     n_granule_cells::Int64;
     delta::Int64=20,
     n_bins::Int64=1,
-    duration::Float64=200.0)
+    duration::Float64=1200.0)
 
     out = DataFrame()
     n_patterns = unique(spike_times.Pattern) |> length
@@ -195,7 +195,7 @@ Returns a raster plot
 """
 function raster_plot(
     spikes::DataFrame; 
-    xlims::Vector=[0,200],
+    xlims::Vector=[0,1200],
     xlab::String="Time (ms)",
     ylab::String="Neuron ID"
     )
