@@ -1,5 +1,6 @@
 : Modified netstim125 to include oscillating interval between spikes, currently testing
-: ISSUES: use of net_move here (commented out)
+: ISSUES: - compiles, but cannot use net_move here, gives back "flag error" (commented out)
+: 		  - Study more to see if net_move necessary 
 
 NEURON	{ 
   ARTIFICIAL_CELL NetStimOsc
@@ -10,13 +11,13 @@ NEURON	{
 
 PARAMETER {
 	:interval	= 10 (ms) <1e-9,1e9>: time between spikes (msec)
-	number		= 50 <0,1e9>	: number of spikes (independent of noise)
-	start		= 0 (ms)	: start of first spike
-	forcestop 	= 1200 (ms)	: stop firing spikes
+	number		= 10 <0,1e9>	: number of spikes (independent of noise)
+	start		= 50 (ms)	: start of first spike
+	forcestop 	= 200 (ms)	: stop firing spikes
 	PI 			= 3.14159265358979323846
-	freq 		= 3
-	status 		= 1 : unused
-	nspk 		= 10 : unused
+	freq 		= 3	: defined externally, but still need to initialize here 
+	status 		= 1 : unused,  ''
+	nspk 		= 10 : unused, ''
 }
 
 ASSIGNED {
@@ -57,13 +58,24 @@ PROCEDURE init_sequence(t(ms)) {
 	}
 }
 
-FUNCTION interval (t (ms)) {
-	interval = 500*sin(2*PI*freq*(t)/1000 + 1.6)+500
+COMMENT
+FUNCTION interval (t (ms)) (ms) {
+	interval = 450*sin(2*PI*freq*(t)/1000 + (PI/2))+451
+}
+ENDCOMMENT
+
+: TODO: make the following variables:
+: 	- amplitude (100/freq) controls sparsity between oscillations (should include 'clipping' if statement to enforce upper limit)
+: 	- vertical shift (10) limits spike overlap (functions as minimum interval)
+:	- phase shift (PI/2)
+
+FUNCTION interval (t (ms)) (ms) {
+	interval = (100/freq)*sin(2*PI*freq*(t)/1000 + (PI/2))+((100/freq)+10) 
 }
 
 FUNCTION invl(mean (ms)) (ms) {
 	if (mean <= 0.) {
-		mean = .01 (ms) : I would worry if it were 0.
+		mean = .01 (ms) 
 	}
 	invl = mean + mean*erand()
 }
@@ -84,14 +96,14 @@ VERBATIM
 	}else{
 		/* only can be used in main thread */
 		if (_nt != nrn_threads) {
-hoc_execerror("multithread random in NetStim"," only via hoc Random");
+			hoc_execerror("multithread random in NetStim"," only via hoc Random");
 		}
 ENDVERBATIM
 		: the old standby. Cannot use if reproducible parallel sim
 		: independent of nhost or which host this instance is on
 		: is desired, since each instance on this cpu draws from
 		: the same stream
-		erand = exprand(1)
+		erand = exprand(1)	: I don't think this works... (SS)
 VERBATIM
 	}
 ENDVERBATIM
@@ -127,12 +139,14 @@ NET_RECEIVE (w) {
 			: randomize the first spike so on average it occurs at
 			: noise*interval (most likely interval is always 0)
 			next_invl()
-			event = event + interval(t)
+			event = event + interval(t)			
 			net_send(event, 1)
-		:}else if (w > 0 && on == 1) {			: DOESN'T WORK
-			: assume interval has changed, recalculate time of next event
-			:next_invl()
-			:net_move(t + event)
+			COMMENT
+		}else if (w > 0 && on == 1) {			: DOESN'T WORK
+			 assume interval has changed, recalculate time of next event
+			 next_invl()
+			 net_move(t + event)
+			ENDCOMMENT
 		}else if (w < 0) { : turn off spiking definitively
 			on = 0
 		}
