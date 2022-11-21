@@ -135,7 +135,7 @@ begintemplate DentateGyrus
             $1 : int :  Global RNG seed
         */
         n_patterns = 1     // number of patterns to simulate (should be 12 for the full sim)
-        dt = 0.05            // simulation time step [ms]
+        dt = 0.1            // simulation time step [ms]
         tstop = 1000         // total simulation time [ms]
         trial = $1          // trialnumber = seed of simulation [ GENERALIZE ]
         trial_noise = 1     // seed for noise to PP
@@ -259,11 +259,11 @@ begintemplate DentateGyrus
         PP_input2MC_  	= 0         // stimulate MC with PP
         PP_rate_        = 10.       // rate of PP Poisson input
         PP_rate_noise_  = 0.        // rate of PP Poisson noise
-        PP_box_nr_      = 80         // number of active PPs
+        PP_box_nr_      = 10         // number of active PPs            TODO: need to be able to scale prop. to. desired freq (SS)
         PP_box_stop_	= 1000.       // time of box [ms]
         PP_box_start_	= 0.        // shift of box [ms]
-        PP_box_nspk_    = 40        // number of spike per active PP
-        PP_freq_         = 3         // oscillation frequency
+        PP_box_nspk_    = 25        // number of spike per active PP    TODO: need to be able to scale prop. to. desired freq (SS)
+        PP_freq_        = 3         // oscillation frequency
 
         if (PP_input2MC_ != 0) {
             print "PP stimulation not yet implemented if stimulation of also MCs...."      

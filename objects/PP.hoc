@@ -39,7 +39,8 @@ proc init() {
 
 
 proc actemp() {
-    if (PP_freq_){
+    //TODO: Re-write this s.t. there's no dependancy on external variable
+    if (PP_freq_){                      
         acell pp = new NetStimOsc(.5)
 	        pp.start = PP_box_start_
 	        pp.forcestop = PP_box_stop_ 
