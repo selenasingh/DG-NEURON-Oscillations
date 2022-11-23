@@ -4,13 +4,12 @@
 
 NEURON	{ 
   ARTIFICIAL_CELL NetStimOsc
-  RANGE number, start, forcestop, freq, status, nspk
+  RANGE number, start, forcestop, freq, status, nspk, min_invl
   THREADSAFE : only true if every instance has its own distinct Random
   POINTER donotuse
 }
 
 PARAMETER {
-	:interval	= 10 (ms) <1e-9,1e9>: time between spikes (msec)
 	number		= 10 <0,1e9>	: number of spikes (independent of noise)
 	start		= 50 (ms)	: start of first spike
 	forcestop 	= 200 (ms)	: stop firing spikes
@@ -18,6 +17,7 @@ PARAMETER {
 	freq 		= 3	: defined externally, but still need to initialize here 
 	status 		= 1 : unused,  ''
 	nspk 		= 10 : unused, ''
+	min_invl	= 10
 }
 
 ASSIGNED {
@@ -58,19 +58,13 @@ PROCEDURE init_sequence(t(ms)) {
 	}
 }
 
-COMMENT
-FUNCTION interval (t (ms)) (ms) {
-	interval = 450*sin(2*PI*freq*(t)/1000 + (PI/2))+451
-}
-ENDCOMMENT
-
 : TODO: make the following variables:
 : 	- amplitude (100/freq) controls sparsity between oscillations (should include 'clipping' if statement to enforce upper limit)
 : 	- vertical shift (10) limits spike overlap (functions as minimum interval, will have to adjust for different frequencies)
 :	- phase shift (PI/2)
 
 FUNCTION interval (t (ms)) (ms) {
-	interval = (100/freq)*sin(2*PI*freq*(t)/1000 + (3*PI/2))+((100/freq)+10) 
+	interval = (100/freq)*sin(2*PI*freq*(t)/1000 + (PI/2))+((100/freq)+min_invl) 
 }
 
 FUNCTION invl(mean (ms)) (ms) {

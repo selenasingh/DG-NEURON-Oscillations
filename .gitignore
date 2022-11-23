@@ -9,3 +9,4 @@ data/*
 figures/*
 
 testosc.mod
+.DS_Store
