@@ -1,5 +1,5 @@
 // Hyperparameters 
-N_RUNS =  5 // Number of runs per group
+N_RUNS =  3 // Number of runs per group
 PP_freq_ = 1 //
 
 // Load cell templates and network 

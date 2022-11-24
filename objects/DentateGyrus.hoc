@@ -134,9 +134,9 @@ begintemplate DentateGyrus
         Arguments: 
             $1 : int :  Global RNG seed
         */
-        n_patterns = 12    // number of patterns to simulate (should be 12 for the full sim)
+        n_patterns = 6    // number of patterns to simulate (should be 12 for the full sim)
         dt = 0.1            // simulation time step [ms]
-        tstop = 1000         // total simulation time [ms]
+        tstop = 500         // total simulation time [ms]
         trial = $1          // trialnumber = seed of simulation [ GENERALIZE ]
         trial_noise = 1     // seed for noise to PP
         rseed  = $1         // pseudorandom number generator seed
@@ -260,7 +260,7 @@ begintemplate DentateGyrus
         PP_rate_        = 10.       // rate of PP Poisson input
         PP_rate_noise_  = 0.        // rate of PP Poisson noise
         PP_box_nr_      = 10         // number of active PPs            
-        PP_box_stop_	= 1000.       // time of box [ms]
+        PP_box_stop_	= 500.       // time of box [ms]
         PP_box_start_	= 1.        // shift of box [ms]
         PP_box_nspk_    = 25        // number of spike per active PP    TODO: need to be able to scale prop. to. desired freq (SS)
         PP_freq_        = 3         // oscillation frequency
@@ -282,14 +282,14 @@ begintemplate DentateGyrus
         scale_sk_dg_                    = 1                 // scaling of Ca-dependent K (SK) of th GC model
         scale_kir_                      = 1                 // scaling of KIR conductance in GC model
         scale_gabaa_                    = 1                 // scaling of GABAA in GC model
-        scale_PP_strength               = 0.1*(1-test_sa)   // scaling of synaptic weight of PP
+        scale_PP_strength               = 0.01*(1-test_sa)   // scaling of synaptic weight of PP
         scale_PP2BC_strength            = 1*(1-test_sa)     // scaling of synaptic weight PP->BC (100% for original value which was 50% of PP->GC strength..)
         scale_PP2HC_strength            = 0                 // scaling of synaptic weight PP->HIPP (set to 0% because there are no PP->HIPP connections...)
         scale_HC2GC_strength            = 1*(1-test_sa)     // scaling of synaptic weight HC->GC (beta_HIPP in Myers and Scharfman, 2009)
         scale_MC2GC_strength            = 1*(1-test_sa)     // scaling of synaptic weight MC->GC (beta_HIPP in Myers and Scharfman, 2009)
         scale_GC2BC_strength            = 3*(1-test_sa)     // scaling of synaptic weight GC->BC
         scale_BC2GC_strength            = 3*(1-test_sa)     // scaling of synaptic weight BC->GC
-        spontaneous_activity_strength   = 50               // scaling of the strength of synaptic weight for the spontaneous AP generators
+        spontaneous_activity_strength   = 0               // scaling of the strength of synaptic weight for the spontaneous AP generators
 
     }
 
@@ -348,9 +348,10 @@ begintemplate DentateGyrus
 
         // Theta oscillations
         if (strcmp($s1, "theta") == 0) {
-            PP_freq_ = 3 
+            PP_freq_ = 5 
             PP_box_nspk_  = 25 
-            PP_min_invl_ = 10
+            PP_min_invl_ = 10                    // 10 optimal for theta
+            PP_scale_max_invl_ = 100
             scale_na_conductances = 1
             scale_kdr_conductances = 1
             scale_ka_conductances = 1
@@ -367,9 +368,10 @@ begintemplate DentateGyrus
 
         // Alpha oscillations
         if (strcmp($s1, "alpha") == 0) {
-            PP_freq_ = 12 
+            PP_freq_ = 15 
             PP_box_nspk_  = 75
-            PP_min_invl_ = 5
+            PP_min_invl_ = 10
+            PP_scale_max_invl_ = 100
             scale_na_conductances = 1
             scale_kdr_conductances = 1
             scale_ka_conductances = 1
@@ -387,7 +389,8 @@ begintemplate DentateGyrus
         if (strcmp($s1, "gamma") == 0) {
             PP_freq_ = 30 
             PP_box_nspk_  = 300
-            PP_min_invl_ = 1
+            PP_min_invl_ = 2                    // 1 optimal for gamma
+            PP_scale_max_invl_ = 100
             scale_na_conductances = 1
             scale_kdr_conductances = 1
             scale_ka_conductances = 1
@@ -416,11 +419,11 @@ begintemplate DentateGyrus
         for i=0, nbcell-1 {Bcell[i] = new BasketCell(i)}
         for i=0, nmcell-1 {Mcell[i] = new MossyCell(i)}
         for i=0, nhcell-1 {Hcell[i] = new HIPPCell(i)}
-        for i=0, npp-1 	  {PPSt[i] = new PPstim(i, PP_rate_, tstop, PP_box_start_, PP_box_stop_, PP_freq_, PP_min_invl_)}
+        for i=0, npp-1 	  {PPSt[i] = new PPstim(i, PP_rate_, tstop, PP_box_start_, PP_box_stop_, PP_freq_, PP_min_invl_, PP_scale_max_invl_)}
         
 	    // [TESTING] Adding individual stims to each cell in order to simulate spontaneous activity
 	    //for i=0, npp-1    {PPSt_noise[i] = new PPstim(i, PP_rate_, tstop, PP_box_start_, PP_box_stop_)}
-        for i=0, ngcell-1    { PPSt_noise[i] = new PPstim(i, PP_rate_, tstop, 1., tstop-1, 0, 10) }
+        for i=0, ngcell-1    { PPSt_noise[i] = new PPstim(i, PP_rate_, tstop, 1., tstop-1, 0, 10, 10) }
 
         // Append to cells list
         for i = 0, ngcell-1 {cells.append(Gcell[i])} 	// cells 0-499 GCs
@@ -1411,6 +1414,7 @@ begintemplate DentateGyrus
                 PPSt[i].pp.freq = PP_freq_
                 PPSt[i].pp.number = PP_box_nspk_
                 PPSt[i].pp.min_invl = PP_min_invl_
+                PPSt[i].pp.scale_max_invl = PP_scale_max_invl_
                 //print "pattern using osc"
             } else {
                 PPSt[i].pp.nspk = PP_box_nspk_

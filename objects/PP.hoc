@@ -35,6 +35,7 @@ proc init() {
     PP_box_stop_ = $5
     PP_freq_ = $6
     PP_min_invl_ = $7
+    PP_scale_max_invl_ = $8
 }
 
 
@@ -47,6 +48,7 @@ proc actemp() {
 	        pp.forcestop = PP_box_stop_ 
             pp.freq = PP_freq_
             pp.min_invl = PP_min_invl_
+            pp.scale_max_invl = PP_scale_max_invl_
         print "using NetStimOsc"
     }else{
         acell pp = new NetStimBox(0.5)

@@ -4,20 +4,21 @@
 
 NEURON	{ 
   ARTIFICIAL_CELL NetStimOsc
-  RANGE number, start, forcestop, freq, status, nspk, min_invl
+  RANGE number, start, forcestop, freq, status, nspk, min_invl, scale_max_invl
   THREADSAFE : only true if every instance has its own distinct Random
   POINTER donotuse
 }
 
 PARAMETER {
-	number		= 10 <0,1e9>	: number of spikes (independent of noise)
-	start		= 50 (ms)	: start of first spike
-	forcestop 	= 200 (ms)	: stop firing spikes
-	PI 			= 3.14159265358979323846
-	freq 		= 3	: defined externally, but still need to initialize here 
-	status 		= 1 : unused,  ''
-	nspk 		= 10 : unused, ''
-	min_invl	= 10
+	number			= 10 <0,1e9>		: number of spikes (independent of noise)
+	start			= 50 (ms)			: start of first spike
+	forcestop 		= 200 (ms)			: stop firing spikes
+	PI 				= 3.14159265358979323846
+	min_invl		= 10				: minimum interval 
+	scale_max_invl  = 100				: scaling for maximal interval
+	freq 			= 3					: defined externally, but still need to initialize here 
+	status 			= 1 				: unused,  ''
+	nspk 			= 10 				: unused, ''
 }
 
 ASSIGNED {
@@ -64,7 +65,7 @@ PROCEDURE init_sequence(t(ms)) {
 :	- phase shift (PI/2)
 
 FUNCTION interval (t (ms)) (ms) {
-	interval = (100/freq)*sin(2*PI*freq*(t)/1000 + (PI/2))+((100/freq)+min_invl) 
+	interval = (scale_max_invl/freq)*sin(2*PI*freq*(t)/1000 + (PI/2))+((scale_max_invl/freq)+min_invl) 
 }
 
 FUNCTION invl(mean (ms)) (ms) {

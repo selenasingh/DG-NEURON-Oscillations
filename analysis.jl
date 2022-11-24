@@ -6,8 +6,8 @@ include("utilities.jl");
 default(show=false)
 
 # HYPERPARAMS
-n_runs = 5
-patterns = 0:12
+n_runs = 3
+patterns = 0:6
 labels = ["theta", "alpha", "gamma"]
 fig_ext = ".png"
 
