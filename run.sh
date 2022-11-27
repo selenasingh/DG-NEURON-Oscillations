@@ -5,12 +5,14 @@ sh cleanup.sh
 mkdir data
 mkdir data/dgnetwork 
 mkdir data/fi-curves
+mkdir data/parameters
 
 mkdir figures 
 mkdir figures/raster-plots
 mkdir figures/pattern-separation
 mkdir figures/voltage-tracings
 mkdir figures/fi-curves
+mkdir figures/mossycell
 
 # Get FI Curves
 

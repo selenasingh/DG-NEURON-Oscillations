@@ -61,7 +61,6 @@ PROCEDURE init_sequence(t(ms)) {
 
 : TODO: make the following variables:
 : 	- amplitude (100/freq) controls sparsity between oscillations (should include 'clipping' if statement to enforce upper limit)
-: 	- vertical shift (10) limits spike overlap (functions as minimum interval, will have to adjust for different frequencies)
 :	- phase shift (PI/2)
 
 FUNCTION interval (t (ms)) (ms) {
@@ -98,7 +97,7 @@ ENDVERBATIM
 		: independent of nhost or which host this instance is on
 		: is desired, since each instance on this cpu draws from
 		: the same stream
-		erand = exprand(1)	: I don't think this works... (SS)
+		erand = exprand(1)	
 VERBATIM
 	}
 ENDVERBATIM
@@ -136,12 +135,6 @@ NET_RECEIVE (w) {
 			next_invl()
 			event = event + interval(t)			
 			net_send(event, 1)
-			COMMENT
-		}else if (w > 0 && on == 1) {			: DOESN'T WORK
-			 assume interval has changed, recalculate time of next event
-			 next_invl()
-			 net_move(t + event)
-			ENDCOMMENT
 		}else if (w < 0) { : turn off spiking definitively
 			on = 0
 		}
