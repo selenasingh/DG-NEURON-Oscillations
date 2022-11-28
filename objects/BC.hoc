@@ -117,9 +117,9 @@ proc temp() {
 		insert bk
             gkbar_bk=0.0002
 	    insert ichan2
-	        vshiftma_ichan2 = 43                           // value Yim et al. 2015
+	        vshiftma_ichan2 = 48                           // value Yim et al. 2015
             vshiftmb_ichan2 = 15                           // value Yim et al. 2015
-            vshiftha_ichan2 = 65                             // value Yim et al. 2015
+            vshiftha_ichan2 = 67                             // value Yim et al. 2015
             vshifthb_ichan2 = 12.5                          // value Yim et al. 2015
             vshiftnfa_ichan2 = 18                           // value Yim et al. 2015
             vshiftnfb_ichan2 = 43                           // value Yim et al. 2015

@@ -1,14 +1,13 @@
-# PARAMETER OPTIMIZATION TO FIX MOSSY CELL FI CURVES, Na and K I-V RELATIONSHIPS
+# PARAMETER OPTIMIZATION TO FIX HIPP CELL FI CURVES
 # --------------------
 # DATA USED FOR FITTING:
-# Howard AL, Neu A, Morgan RJ, Echegoyen JC, Soltesz I. Opposing Modifications in Intrinsic Currents and
-# Synaptic Inputs in Post-Traumatic Mossy Cells: Evidence for Single-Cell Homeostasis in a Hyperexcitable Network.
-# Journal of Neurophysiology. 2007;97(3):2394–2409. doi:10.1152/jn.00509.2006
+# Degro CE, Bolduan F, Vida I, Booker SA. Interneuron diversity in the rat dentate gyrus: An unbiased in vitro 
+# classification. Hippocampus. 2022;32(4):310–331. doi:10.1002/hipo.23408
 # --------------------
 # NOTE: Parameters for SOMA ONLY are optimized here, to simplify re-implementation in NEURON
-# TODO: consider unifying this file with optimize_HCs.py
+#       Fit isn't great, but better than baseline. 
 
-#imports
+
 import matplotlib
 import numpy as np
 
@@ -24,17 +23,15 @@ from random import Random
 from inspyred import ec  # evolutionary algorithm
 from netpyne import specs, sim  # neural network design and simulation
 from clamps import IClamp
-from IVdata import IVdata
 from find_rheobase import ElectrophysiologicalPhenotype
-
 
 netparams = specs.NetParams()
 
-mc = netparams.importCellParams(
-    label='MC',
-    conds={"cellType": "MossyCell", "cellModel": "MossyCell"},
-    fileName="objects/MC.hoc",
-    cellName="MossyCell",
+hipp = netparams.importCellParams(
+    label='HIPP',
+    conds={"cellType": "HIPPCell", "cellModel": "HIPPCell"},
+    fileName="objects/HIPP.hoc",
+    cellName="HIPPCell",
     cellArgs=[1],
     importSynMechs=False
 )
@@ -52,10 +49,8 @@ free_params = {
     'ih': ['ghyfbar', 'ghysbar']  # HCN channel
 }
 
-with open('figures/mossycell/mc.txt', 'w') as f:
-    f.write(str(mc))
 
-class optimize_mcs(object):
+class testparam(object):
     def __init__(self,
                  cell,
                  free_params,
@@ -65,7 +60,6 @@ class optimize_mcs(object):
                  mutation_rate=0.03,
                  ):
         self.cell_dict = {"secs": cell["secs"]}
-        self.baseline_dict = {"secs": cell["secs"]}
         self.free_params = free_params
         self.initialParams = []
         self.minParamValues = []
@@ -77,9 +71,10 @@ class optimize_mcs(object):
         self.num_selected = num_selected
         self.mutation_rate = mutation_rate
         self.num_elites = 1
-        self.flag = str('mossy')
+        self.flag = str('hipp')
         self.n_simcells = 1  # number of simulated cells
 
+        # self.manual_adjust()
         self.plot_results()
 
     def retrieve_baseline_params(self):
@@ -91,7 +86,7 @@ class optimize_mcs(object):
         self.baseline = []
         for key in self.free_params.keys():
             for val in self.free_params[key]:
-                self.baseline.append(self.baseline_dict['secs']['soma']['mechs'][key][val])
+                self.baseline.append(self.cell_dict['secs']['soma']['mechs'][key][val])
         self.num_inputs = len(self.baseline)
         return self.baseline
 
@@ -102,43 +97,15 @@ class optimize_mcs(object):
 
     def sim_fi(self):
         ep = ElectrophysiologicalPhenotype(self.cell_dict)
-        self.simfi = ep.compute_fi_curve(ilow=0, ihigh=0.4, n_steps=11, delay=0, duration=1000)
+        self.simfi = ep.compute_fi_curve(ilow=0, ihigh=0.25, n_steps=6, delay=0, duration=1000)
         return self.simfi
 
-    def sim_iv_na(self):
-        iv = IVdata(self.cell_dict)  # instantiate class
-        self.simivna = iv.compute_ivdata(vlow=-80, vhigh=40, n_steps=13, delay=10, duration=5)
-        return self.simivna
-
-    def sim_iv_k(self):
-        iv = IVdata(self.cell_dict)  # instantiate class
-        self.simivk = iv.compute_ivdata(vlow=-90, vhigh=0, n_steps=10, delay=10, duration=5)
-        return self.simivk
-
-    def data_fi(self): 
-        # Howard et al.
-        x = [0, 0.040, 0.080, 0.120, 0.160, 0.200, 0.240, 0.280, 0.320, 0.360, 0.400]
-        y = [0, 1, 4, 8.5, 14, 17, 20, 21.5, 22, 25, 26]
+    def data_fi(self):
+        x = [0, 0.05, 0.1, 0.15, 0.2, 0.25]
+        y = [0, 7, 19, 40, 51, 61]
         datafi = [x, y]
         self.datafi = np.array(datafi)
         return self.datafi
-
-    def data_iv_na(self):
-        # Howard et al.
-        v = np.linspace(-80, 40, 13)
-        ina = [-0.01, -0.01, -0.01, -0.02, -0.07, -0.2, -0.38, -0.36, -0.3, -0.24, -0.19, -0.14, -0.11]
-        dataiv = [v, ina]
-        self.dataiv_na = np.array(dataiv)
-        return self.dataiv_na
-
-    def data_iv_k(self):
-        # Howard et al. 
-        v = np.linspace(-90, 0, 10)
-        ik = [54, 72, 18, 72, 226, 469, 929, 1362, 1796, 2265]
-        iknA = [x / 1000 for x in ik]
-        dataiv = [v, iknA]
-        self.dataiv_k = np.array(dataiv)
-        return self.dataiv_k
 
     def generate_netparams(self, random, args):
         """
@@ -169,17 +136,10 @@ class optimize_mcs(object):
                     i += 1
             FI_data = self.data_fi()
             FI_sim = self.sim_fi().to_numpy()
-            Na_data = self.data_iv_na()
-            Na_sim = self.sim_iv_na().to_numpy()
-            K_data = self.data_iv_k()
-            K_sim = self.sim_iv_k().to_numpy()
 
             ficurves = np.sum([((x1 - x2) ** 2) for (x1, x2) in zip(FI_data[1, :], FI_sim[:, 1])]) / len(FI_data[1, :])
-            na_currs = np.sum([((x1 - x2) ** 2) for (x1, x2) in zip(Na_data[1, :], Na_sim[:, 1])]) / len(Na_data[1, :])
-            k_currs = np.sum([((x1 - x2) ** 2) for (x1, x2) in zip(K_data[1, :], K_sim[:, 2])]) / len(K_data[1, :])
 
-            fitness = (1 / 3 * ficurves) + (1 / 3 * na_currs) + (1 / 3 * k_currs)
-
+            fitness = ficurves
 
             self.fitnessCandidates.append(fitness)
 
@@ -212,28 +172,22 @@ class optimize_mcs(object):
         # SET UP MIN/MAX BOUNDS FOR PARAMETERS ------------------
         # TODO: find cleaner way of dealing with these lists, allow for easier modification
 
-
-        #self.minParamValues = [0.4 * param for param in self.baseline]  # 0.5 best for IF, Na
+        #self.minParamValues = [0.2 * param for param in self.baseline]  # 0.5 best for IF, Na
         #self.maxParamValues = [3.0 * param for param in self.baseline]  # 3.0 best for IF, Na
 
-        soma_minbounds = [(0.0165 * 0.1), (0.05 * 0.8), (43 * 0.8), (22 * 0.8), (125 * 0.8), (15 * 0.8),
-                               (18.0 * 0.1), (43.0 * 0.1), (30.0 * 0.1), (55.0 * 0.1), (0.03 * 0.8), (0.01 * 0.2),
-                               (1.1e-05 * 0.1),
-                               (1e-05 * 0.1), (0.0006 * 0.1), (8e-05 * 0.1), (0.016 * 0.1),
-                               (5e-06 * 0.1), (5e-06 * 0.1)
+        
+        self.minParamValues = [(0.0006 * 0.2), (0.2 * 1.0), (43*0.9), (15 * 0.2), (100*0.2), (12.5 * 0.2),
+                               (18.0 * 0.2), (43.0 * 0.2), (30.0 * 0.2), (55.0 * 0.2), (0.01 * 0.2), (0.01 * 0.9), (3.6e-05 * 0.2),
+                               (0.0008* 0.2), (0.0015 * 0.2), (8e-05 * 0.2), (0.003 * 0.2),
+                               (1.5e-05 * 0.2), (1.5e-05 * 0.2)
                                ]
 
-        soma_maxbounds = [(0.0165 * 2.0), (0.05 * 1.2), (43 * 1.2), (22 * 1.5), (125 * 1.5), (15 * 1.5),
-                               (18.0 * 2.0), (43.0 * 2.0), (30.0 * 2.0), (55.0 * 2.0), (0.03 * 1.5), (0.01 * 1.8),
-                               (1.1e-05 * 2.0),
-                               (1e-05 * 2.0), (0.0006 * 2.0), (8e-05 * 2.0), (0.016 * 2.0),
-                               (5e-06 * 2.0), (5e-06 * 2.0)
+        self.maxParamValues = [(0.0006 * 2.5), (0.2 * 2.5), (43*1.2), (15 * 2.5), (100*2.5), (12.5 * 2.5),
+                               (18.0 * 2.5), (43.0 * 2.5), (30.0 * 2.5), (55.0 * 2.5), (0.01 * 2.5), (0.01 * 10.0), (3.6e-05 * 2.5),
+                               (0.0008 * 2.5), (0.0015 * 2.5), (8e-05 * 2.5), (0.003 * 2.5),
+                               (1.5e-05 * 2.5), (1.5e-05 * 2.5)
                                ]
-
-        self.minParamValues = soma_minbounds 
-        self.maxParamValues = soma_maxbounds 
-
-
+        
         # SET UP EVOLUTIONARY COMPUTATION ----------------------
         self.gc_ec = ec.EvolutionaryComputation(rand)
         self.gc_ec.selector = ec.selectors.truncation_selection  # purely deterministic
@@ -260,7 +214,7 @@ class optimize_mcs(object):
         self.final_pop.sort(reverse=True)  # sort final population so best fitness is first in list
         self.bestCand = self.final_pop[0].candidate  # bestCand <-- individual @ start of list
 
-        plt.savefig('figures/mossycell/observer_%s.pdf' % self.flag)  # save fitness vs. iterations graph
+        plt.savefig('figures/hippcell/observer_%s.pdf' % self.flag)  # save fitness vs. iterations graph
         plt.close()
         return self.bestCand
 
@@ -291,8 +245,6 @@ class optimize_mcs(object):
         baselineparams = self.retrieve_baseline_params()
         self.param_store = pd.DataFrame({"param": sum(free_params.values(), []), "baseline": baselineparams})
         self.sim_fi_store = pd.DataFrame([])
-        self.sim_ivna_store = pd.DataFrame([])
-        self.sim_ivk_store = pd.DataFrame([])
 
         # generate set of n_simcells, populate DataFrames above with FI, IV, params
         for cell_n in range(0, self.n_simcells):
@@ -302,19 +254,13 @@ class optimize_mcs(object):
             self.param_store = pd.concat([self.param_store, newparamdf], axis=1)  # append params to DF
             self.build_optimizedcell()  # build the optimized cell
             newcellfi = self.sim_fi()  # generate simulated FI curve
-            newcellivna = self.sim_iv_na()  # generate simulated IV curves
-            newcellivk = self.sim_iv_k()  # generate simulated IV curves
             self.sim_fi_store = pd.concat([newcellfi, self.sim_fi_store])  # append FI curve to DF
-            self.sim_ivna_store = pd.concat([newcellivna, self.sim_ivna_store])  # append IV curve to DF
-            self.sim_ivk_store = pd.concat([newcellivk, self.sim_ivk_store])  # append IV curve to DF
 
         # save dataframes to .csv
         self.sim_fi_store.to_csv('data/parameters/simFIs_%s.csv' % self.flag)
-        self.sim_ivna_store.to_csv('data/parameters/simIVsNa_%s.csv' % self.flag)
-        self.sim_ivk_store.to_csv('data/parameters/simIVsK_%s.csv' % self.flag)
         self.param_store.to_csv('data/parameters/parameters_%s.csv' % self.flag)
 
-        return self.sim_fi_store, self.sim_ivna_store, self.sim_ivk_store
+        return self.sim_fi_store 
 
     def compute_avg_curves(self):
         """ Computes average simulated FI and IV curves and SEM
@@ -322,43 +268,27 @@ class optimize_mcs(object):
         Returns
             'tuple' of two DataFrames, (avg_FI, avg_IV)
         """
-        sim_stores = self.store_curves()
-        sim_fi_store = sim_stores[0]
-        sim_ivna_store = sim_stores[1]
-        sim_ivk_store = sim_stores[2]
+        sim_fi_store = self.store_curves()
 
         # average simulated FI curve:
         avgfi = sim_fi_store.groupby(['I']).agg({'F': ['mean']}).values
         semfi = sim_fi_store.groupby(['I']).agg({'F': ['std']}).values / np.sqrt(self.n_simcells)
-        self.avg_FI = np.c_[np.linspace(0, 0.4, 11), avgfi, semfi]
+        self.avg_FI = np.c_[np.linspace(0, 0.25, 6), avgfi, semfi]
 
-        iv_na = sim_ivna_store.groupby(['V']).agg({'Na': ['mean']}).values
-        iv_k = sim_ivk_store.groupby(['V']).agg({'K': ['mean']}).values
-        stdv_na = sim_ivna_store.groupby(['V']).agg({'Na': ['std']}).values / np.sqrt(self.n_simcells)
-        stdv_k = sim_ivk_store.groupby(['V']).agg({'K': ['std']}).values / np.sqrt(self.n_simcells)
-        self.avg_IV_Na = np.c_[np.linspace(-80, 40, 13), iv_na, stdv_na]
-        self.avg_IV_K = np.c_[np.linspace(-90, 0, 10), iv_k, stdv_k]
-
-        return self.avg_FI, self.avg_IV_Na, self.avg_IV_K
+        return self.avg_FI 
 
     def plot_results(self):
         """ Plots average simulated IV and FI curves from optimized neurons against avg curves from data. Saves
-        figure to 'figures/mossycell'. Automatically called when optimizeparams is instantiated.
+        figure to 'figures/hippcell'. Automatically called when optimizeparams is instantiated.
         """
 
         # Generate and collect all data for plotting
         baselinecellfi = self.sim_fi().to_numpy()
-        baselinecellivna = self.sim_iv_na().to_numpy()
-        baselinecellivk = self.sim_iv_k().to_numpy()
         exp_fi = self.data_fi()
-        exp_ivna = self.data_iv_na()
-        exp_ivk = self.data_iv_k()
-        simcurves = self.compute_avg_curves()
-        avg_fi = simcurves[0]
-        avg_ivna = simcurves[1]
-        avg_ivk = simcurves[2]
+        avg_fi = self.compute_avg_curves()
 
-        fig1, (ax1, ax2, ax3) = plt.subplots(3, 1)
+        fig1, (ax1) = plt.subplots(1, 1)
+        
         # FI curves
         ax1.plot(baselinecellfi[:, 0], baselinecellfi[:, 1], color='0.7', linestyle='dashed', label='Baseline')
         ax1.plot(exp_fi[0, :], exp_fi[1, :], color='0.5', label='Data')
@@ -367,27 +297,8 @@ class optimize_mcs(object):
         ax1.set_xlabel("Current (nA)")
         ax1.set_ylabel("Frequency (Hz)")
 
-        # IV curve: Na
-        ax2.plot(baselinecellivna[:, 0], baselinecellivna[:, 1], color='0.7', linestyle='dashed', label='Baseline Na')
-        ax2.plot(exp_ivna[0, :], exp_ivna[1, :], color='0.5', label='Data Na')
-        ax2.plot(avg_ivna[:, 0], avg_ivna[:, 1], color='0.0', label='Optimized Na')
-        ax2.axhline(0, lw=0.25, color='0.0')  # x = 0
-        ax2.axvline(0, lw=0.25, color='0.0')  # y = 0
-        ax2.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        ax2.set_xlabel("Voltage (mV)")
-        ax2.set_ylabel("Current (nA)")
-
-        ax3.plot(baselinecellivk[:, 0], baselinecellivk[:, 2], color='0.7', linestyle='dashed', label='Baseline K')
-        ax3.plot(exp_ivk[0, :], exp_ivk[1, :], color='0.5', label='Data K')
-        ax3.plot(avg_ivk[:, 0], avg_ivk[:, 1], color='0.0', label='Optimized K')
-        ax3.axhline(0, lw=0.25, color='0.0')  # x = 0
-        ax3.axvline(0, lw=0.25, color='0.0')  # y = 0
-        ax3.legend(loc='center left', bbox_to_anchor=(1, 0.5))
-        ax3.set_xlabel("Voltage (mV)")
-        ax3.set_ylabel("Current (nA)")
-
         fig1.tight_layout()
-        fig1.savefig('figures/mossycell/optimizationresults_%s.pdf' % self.flag, bbox_inches="tight")
+        fig1.savefig('figures/hippcell/optimizationresults_%s.pdf' % self.flag, bbox_inches="tight")
 
 
-OptimizeMCs = optimize_mcs(mc, free_params)
+TestParam = testparam(hipp, free_params)
