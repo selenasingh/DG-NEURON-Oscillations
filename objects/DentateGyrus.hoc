@@ -134,7 +134,7 @@ begintemplate DentateGyrus
         Arguments: 
             $1 : int :  Global RNG seed
         */
-        n_patterns = 3    // number of patterns to simulate (should be 12 for the full sim)
+        n_patterns = 1    // number of patterns to simulate (should be 12 for the full sim)
         dt = 0.1            // simulation time step [ms]
         tstop = 750         // total simulation time [ms]
         trial = $1          // trialnumber = seed of simulation [ GENERALIZE ]
@@ -262,7 +262,7 @@ begintemplate DentateGyrus
         PP_box_nr_      = 6         // number of active PPs            
         PP_box_stop_	= 750.       // time of box [ms]
         PP_box_start_	= 1.        // shift of box [ms]
-        PP_box_nspk_    = 25        // number of spike per active PP    TODO: need to be able to scale prop. to. desired freq (SS)
+        PP_box_nspk_    = 25        // number of spike per active PP   
         PP_freq_        = 3         // oscillation frequency
 
         if (PP_input2MC_ != 0) {
@@ -277,19 +277,20 @@ begintemplate DentateGyrus
         Arguments: 
 
         */
+        scale_factor                    = 0.1               // coefficient for scale PP and scale PP2BC
         p_sprouted_                     = 0                 // proportion of other GCs to which a GC will connect 
         scale_gpas_dg_                  = 1                 // scaling [%/100] of gpas of th GC model
         scale_sk_dg_                    = 1                 // scaling of Ca-dependent K (SK) of th GC model
         scale_kir_                      = 1                 // scaling of KIR conductance in GC model
         scale_gabaa_                    = 1                 // scaling of GABAA in GC model
-        scale_PP_strength               = 0.03*(1-test_sa)   // scaling of synaptic weight of PP
-        scale_PP2BC_strength            = (0.03/2)*(1-test_sa)     // scaling of synaptic weight PP->BC (100% for original value which was 50% of PP->GC strength..)
+        scale_PP_strength               = scale_factor*(1-test_sa)   // scaling of synaptic weight of PP
+        scale_PP2BC_strength            = (scale_factor/2)*(1-test_sa)     // scaling of synaptic weight PP->BC (100% for original value which was 50% of PP->GC strength..)
         scale_PP2HC_strength            = 0                 // scaling of synaptic weight PP->HIPP (set to 0% because there are no PP->HIPP connections...)
         scale_HC2GC_strength            = 1*(1-test_sa)     // scaling of synaptic weight HC->GC (beta_HIPP in Myers and Scharfman, 2009)
         scale_MC2GC_strength            = 1*(1-test_sa)     // scaling of synaptic weight MC->GC (beta_HIPP in Myers and Scharfman, 2009)
         scale_GC2BC_strength            = 3*(1-test_sa)     // scaling of synaptic weight GC->BC
         scale_BC2GC_strength            = 3*(1-test_sa)     // scaling of synaptic weight BC->GC
-        spontaneous_activity_strength   = 100               // scaling of the strength of synaptic weight for the spontaneous AP generators
+        spontaneous_activity_strength   = 0              // scaling of the strength of synaptic weight for the spontaneous AP generators
 
     }
 
@@ -349,8 +350,8 @@ begintemplate DentateGyrus
         // Theta oscillations
         if (strcmp($s1, "theta") == 0) {
             PP_freq_ = 3                        // Zheng et al. 
-            PP_box_nspk_  = 45 
-            PP_min_invl_ = 3                    // 10 optimal for theta
+            PP_box_nspk_  = 30 
+            PP_min_invl_ = 10                    // 10 optimal for theta
             PP_scale_max_invl_ = 100
             scale_na_conductances = 1
             scale_kdr_conductances = 1
@@ -370,7 +371,7 @@ begintemplate DentateGyrus
         if (strcmp($s1, "alpha") == 0) {
             PP_freq_ = 12                       // Zheng et al. 
             PP_box_nspk_  = 80
-            PP_min_invl_ = 3
+            PP_min_invl_ = 5
             PP_scale_max_invl_ = 100
             scale_na_conductances = 1
             scale_kdr_conductances = 1

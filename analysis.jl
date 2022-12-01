@@ -7,7 +7,7 @@ default(show=false)
 
 # HYPERPARAMS
 n_runs = 1
-patterns = 0:3
+patterns = 0:1
 labels = ["theta", "alpha", "gamma"]
 fig_ext = ".png"
 

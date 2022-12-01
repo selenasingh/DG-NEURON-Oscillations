@@ -64,7 +64,7 @@ PROCEDURE init_sequence(t(ms)) {
 :	- phase shift (PI/2)
 
 FUNCTION interval (t (ms)) (ms) {
-	interval = (scale_max_invl/freq)*sin(2*PI*freq*(t)/1000 + (PI/2))+((scale_max_invl/freq)+min_invl) 
+	interval = (scale_max_invl/freq)*sin(2*PI*freq*(t)/1000 + (3*PI/2))+((scale_max_invl/freq)+min_invl) 
 }
 
 FUNCTION invl(mean (ms)) (ms) {

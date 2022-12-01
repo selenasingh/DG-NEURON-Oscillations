@@ -141,7 +141,7 @@ proc temp() {
             ghysbar_ih=3.7500000000000003e-05
 
 		
-		cm=1.55
+		cm=1.1
 	} 
 
 	forsec pdend {
@@ -149,7 +149,7 @@ proc temp() {
 			gnatbar_ichan2=0.2  
 			gkfbar_ichan2=0.006
 			gl_ichan2 = 0.000036
-		cm=1.55
+		cm=1.1
 	}
 		
 	forsec ddend {
@@ -157,7 +157,7 @@ proc temp() {
 			gnatbar_ichan2=0.0
 			gkfbar_ichan2=0.00
 			gl_ichan2 = 0.000036
-		cm=1.55
+		cm=1.1
 	}
 
 	connect hcdend1[0](0), soma(1)
@@ -169,7 +169,7 @@ proc temp() {
 	for i=1,2 {connect hcdend3[i](0), hcdend3[i-1](1)}
 	for i=1,2 {connect hcdend4[i](0), hcdend4[i-1](1)}
 
-	forall {Ra=214}
+	forall {Ra=100}
 	forall {
         	ena 		= 	50        		// ena was unified from enat=55 (BC, HIPP, MC) and enat=45 (GC) in Santhakumar et al. (2005) <ah>
             ek			=	-90          	// simplified ekf=eks=ek=esk; note the eK was erroneously reported as -105mV in the Yim et al. 2015 <ah>

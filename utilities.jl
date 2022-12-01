@@ -20,7 +20,7 @@ function create_directories_if_not_exist()
         mkdir("figures")
     end
 
-    for d ∈ ["raster-plots", "pattern-separation", "voltage-tracings", "fi-curves"]
+    for d ∈ ["raster-plots", "pattern-separation", "voltage-tracings", "fi-curves", "lfp"]
         if !(d ∈ readdir("figures"))
             mkdir("figures/"*d)
         end

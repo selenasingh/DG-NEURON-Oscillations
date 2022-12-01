@@ -56,21 +56,21 @@ hipp_dict = {"secs": hipp["secs"]}
 
 
 epmc = ElectrophysiologicalPhenotype(mc_dict)
-mcFI = epmc.compute_fi_curve(ilow=0, ihigh=0.4, n_steps=20, delay=0, duration=1500)
+mcFI = epmc.compute_fi_curve(ilow=0, ihigh=0.6, n_steps=20, delay=0, duration=1500)
 
 epgc = ElectrophysiologicalPhenotype(gc_dict)
-gcFI = epgc.compute_fi_curve(ilow=0, ihigh=0.4, n_steps=20, delay=0, duration=1500)
+gcFI = epgc.compute_fi_curve(ilow=0, ihigh=0.6, n_steps=20, delay=0, duration=1500)
 
 epbc = ElectrophysiologicalPhenotype(bc_dict)
-bcFI = epbc.compute_fi_curve(ilow=0, ihigh=0.4, n_steps=20, delay=0, duration=1500)
+bcFI = epbc.compute_fi_curve(ilow=0, ihigh=0.6, n_steps=20, delay=0, duration=1500)
 
 ephipp = ElectrophysiologicalPhenotype(hipp_dict)
-hippFI = ephipp.compute_fi_curve(ilow=0, ihigh=0.4, n_steps=20, delay=0, duration=1500)
+hippFI = ephipp.compute_fi_curve(ilow=0, ihigh=0.6, n_steps=20, delay=0, duration=1500)
 
-plt.plot(gcFI['I'], gcFI['F'], color = 'k', linestyle = 'solid', label='gc')
-plt.plot(hippFI['I'], hippFI['F'], color = 'k', linestyle = 'dashdot', label='hipp')
-plt.plot(mcFI['I'], mcFI['F'], color ='k', linestyle = 'dotted', label='mc')
-plt.plot(bcFI['I'], bcFI['F'], color = 'k', linestyle = 'dashed', label='bc')
+plt.plot(gcFI['I'], gcFI['F'], color = 'k', linestyle = 'solid', label='GC')
+plt.plot(hippFI['I'], hippFI['F'], color = 'k', linestyle = 'dashdot', label='HIPP')
+plt.plot(mcFI['I'], mcFI['F'], color ='k', linestyle = 'dotted', label='MC')
+plt.plot(bcFI['I'], bcFI['F'], color = 'k', linestyle = 'dashed', label='BC')
 plt.legend()
 plt.xlabel("Current (nA)")
 plt.ylabel("Frequency (Hz)")
