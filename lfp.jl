@@ -1,6 +1,6 @@
 ## WORKING TOWARDS LFP CALCULATION 
 ## - built from referencing 'spike_train_correlation' in utilities.jl
-## - challenges understanding what the code is doing and why, see comments below
+## - Need to figure out where to truncate convolution 
 ## ---------------------------------------------
 
 include("utilities.jl");
@@ -37,7 +37,7 @@ function compute_LFP(
     # Create bins for histograms 
     bins = collect(1:n_bins:(duration + n_bins))
 
-    convolved_series = zeros(round(Int64, n_neurons * duration / n_bins))  #TODO: understand the size of this more, + idxs below
+    convolved_series = zeros(round(Int64, n_neurons * duration / n_bins)) 
     for i ∈ 1:n_neurons
         s = spike_train[spike_train.Neuron .== (i-1), "Time"]
         timeseries, _ = np.histogram(s, bins)
@@ -45,7 +45,7 @@ function compute_LFP(
         idx_high = round(Int64, i*duration/n_bins)
         convolved_series[idx_low:idx_high] = np.convolve(timeseries, triangular_kernel, "same")     #TODO: consider scipy.signal.fftconvolve as alt.
     end
-    return convolved_series  # After plotting this, I don't know how to interpret the x and y axes
+    return convolved_series 
 end
 
 # Load theta file only
@@ -61,7 +61,13 @@ fig = plot(pp_lfp[1:750])       # this looks v promising
 savefig(fig, "figures/lfp/test_pp.png")
 
 gc_lfp = compute_LFP(gc_test, 500)
-print(length(gc_lfp))
-fig = plot(gc_lfp)              # this makes no sense to me 
+convolution_size=length(gc_lfp)
+midpoint = div(convolution_size, 2)     #returns int
+
+#print(convolution_size)
+#print(midpoint)
+
+#TODO: understand where would be best to truncate, how to interpret axes
+fig = plot(gc_lfp[(midpoint-7500):(midpoint+7500)])   
 savefig(fig, "figures/lfp/test_gc.png")
 
