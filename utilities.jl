@@ -184,6 +184,18 @@ function fit_power_law(x::Vector, y::Vector)
     return f
 end
 
+function compute_auc(x::Vector, y::Vector)
+    # Clip for tractability
+    x = max.(x, 0.0001)
+    y = max.(y, 0.0001)
+
+    @. model(x, w) = w[1] + (1-w[1])*(x^w[2])
+    res = curve_fit(model, x, y, [0., 1.])
+    a, b = res.param
+    auc = - ((2*a*b) - b + 1)/(2*(1+b))
+    return auc
+end
+
 #######################################################################
 #   FUNCTIONS FOR PLOTTING
 #######################################################################

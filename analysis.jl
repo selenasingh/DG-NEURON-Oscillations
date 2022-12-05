@@ -6,10 +6,13 @@ include("utilities.jl");
 default(show=false)
 
 # HYPERPARAMS
-n_runs = 1
-patterns = 0:1
-labels = ["theta", "alpha", "gamma"]
+n_runs = 10
+patterns = 0:12
+labels = ["theta" , "alpha", "gamma"]
+freqs = [L"\theta", L"\alpha", L"\gamma"]
 fig_ext = ".png"
+
+default(fontfamily="Computer Modern")
 
 # CREATE NECESSARY DIRECTORIES 
 create_directories_if_not_exist()
@@ -21,6 +24,7 @@ populations = Dict(
     "MC" => [506, 521],
     "HIPP" => [521, 527]
 )
+
 
 for run_ ∈ 1:n_runs
     for i ∈ 1:length(labels)
@@ -48,8 +52,8 @@ colors=[:blue, :red, :green]
 global psfig = plot([0;1], [0;1], ls=:dash, c=:black, 
                         xlabel="Input Correlation "*L"(r_{in})", 
                         ylabel="Output Correlation "*L"(r_{out})", 
-                        size=(400, 400),
-                        label=nothing, legend=:outerbottom)
+                        dpi=300, size=(350,350),  # increase resolution of image
+                        label=nothing, legend=:topleft)
 
 psc = Dict("theta"=>[], "alpha"=>[], "gamma"=>[])
 for i ∈ 1:length(labels)
@@ -73,9 +77,9 @@ for i ∈ 1:length(labels)
             pslci = round(psm - 1.96*psse, digits=2)
             psuci = round(psm + 1.96*psse, digits=2)
             if n_runs > 1
-                psc_label = labels[i]*" (PS="*string(psm)*" ["*string(pslci)*", "*string(psuci)*"])"
+                psc_label = freqs[i]*" (PS="*string(psm)*" ["*string(pslci)*", "*string(psuci)*"])"
             else 
-                psc_label = labels[i]*" (PS="*string(psm)
+                psc_label = freqs[i]*" (PS="*string(psm)*")"
             end
         else
             psc_label = nothing
@@ -86,3 +90,44 @@ for i ∈ 1:length(labels)
 end 
 psfig
 savefig(psfig, "figures/pattern-separation/pattern-separation-curve"*fig_ext)
+
+# AREA UNDER PS CURVES 
+auc_save = Dict("theta"=>[], "alpha"=>[], "gamma"=>[])
+auc_means = Dict("theta"=>[], "alpha"=>[], "gamma"=>[])
+auc_ses = Dict("theta"=>[], "alpha"=>[], "gamma"=>[])
+
+for i ∈ 1:length(labels)
+    for run ∈ 1:n_runs
+        spikes = load_spike_files(patterns, labels[i]*"-$run", populations)
+        
+        out = pattern_separation_curve(spikes, 100, 500)
+        x, y = out[:,"Input Correlation"], out[:, "Output Correlation"]
+        
+        # Remove NaNs before fitting
+        idx_ = (.!isnan.(x) .& .!isnan.(y))
+        x = x[idx_]
+        y = y[idx_]
+
+        auc = compute_auc(x, y)
+        append!(auc_save[labels[i]], auc)
+        if (run == n_runs) 
+            aucm = round(mean(auc_save[labels[i]]), digits=2)
+            append!(auc_means[labels[i]], aucm)
+            aucse = std(auc_save[labels[i]])/sqrt(n_runs)
+            append!(auc_ses[labels[i]], aucse)
+        end
+    end 
+end 
+unpack(a) = eltype(a[1])[el[1] for el in a]
+auc_fig = plot(freqs, 
+                unpack(collect(values(auc_means))), 
+                xlabel = "Frequency Band",
+                xtickfont=font(12),
+                ylabel = L"AUC_{PS}",
+                c = :black, 
+                linewidth = 2,
+                yerror = unpack(collect(values(auc_ses))), 
+                dpi=300, size=(300,300),
+                label=nothing,
+                )
+savefig(auc_fig, "figures/pattern-separation/auc-curve"*fig_ext)

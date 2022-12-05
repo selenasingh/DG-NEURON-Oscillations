@@ -1,5 +1,5 @@
 // Hyperparameters 
-N_RUNS =  1 // Number of runs per group
+N_RUNS =  10// Number of runs per group
 PP_freq_ = 1 //
 
 // Load cell templates and network 
@@ -16,13 +16,14 @@ strdef tlab, alab, glab
 
 // Do N_RUNS Runs for each network setting
 for random_state = 1, N_RUNS {
-    PP_freq_ = 3
+    PP_freq_ = 2
     sprint(tlab, "%s-%d", "theta", random_state) 
     th = new DentateGyrus(tlab, random_state, "theta")
 
     print "RUNNING DENTATE GYRUS ", tlab
     th.run()
-
+    
+    
     PP_freq_ = 12
     sprint(alab, "%s-%d", "alpha", random_state)
     al = new DentateGyrus(alab, random_state, "alpha")
@@ -36,4 +37,5 @@ for random_state = 1, N_RUNS {
 
     print "RUNNING DENTATE GYRUS ", glab
     gm.run()
+    
 }
