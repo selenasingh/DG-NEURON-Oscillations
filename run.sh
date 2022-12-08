@@ -25,3 +25,4 @@ nrniv main.hoc
 
 # Analyze Data 
 julia analysis.jl
+julia lfp.jl 

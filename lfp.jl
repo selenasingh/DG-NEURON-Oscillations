@@ -1,15 +1,18 @@
-## WORKING TOWARDS LFP CALCULATION 
+## LFP CALCULATION AND PLOTTING POWER SPECTRA
 ## - built from referencing 'spike_train_correlation' in utilities.jl
-## - Need to figure out where to truncate convolution 
 ## ---------------------------------------------
 
 include("utilities.jl");
 default(show=false)
+default(fontfamily="Computer Modern")
 
 # HYPERPARAMS
-n_runs = 1
-patterns = 0:1
-labels = ["theta", "alpha", "gamma"]
+n_runs = 2
+patterns = 0:12
+duration = 750
+labels = ["theta" , "ftheta", "alpha", "beta", "gamma"]
+freqlabels = [L"\theta" L"\theta_{fast}" L"\alpha" L"\beta"  L"\gamma"]
+
 fig_ext = ".png"
 
 # CREATE NECESSARY DIRECTORIES 
@@ -23,11 +26,19 @@ populations = Dict(
     "HIPP" => [521, 527]
 )
 
+
+# FUNCTIONS
+
+function makechunks(convolution::Vector, n_neurons::Integer)
+    chunks = length(convolution) ÷ n_neurons
+    return [convolution[1+chunks*k:(k == n_neurons-1 ? end : chunks*k+chunks)] for k = 0:n_neurons-1]
+end  
+
 function compute_LFP(
     spike_train::DataFrame, 
     n_neurons::Int64;
-    delta::Int64=100, 
-    n_bins::Int64=1,        #TODO: understand why there's only 1 bin..? What's the relationship with delta?
+    delta::Int64=10, 
+    n_bins::Int64=1,        
     duration::Float64=750.0)
     
     # Create kernel
@@ -45,29 +56,72 @@ function compute_LFP(
         idx_high = round(Int64, i*duration/n_bins)
         convolved_series[idx_low:idx_high] = np.convolve(timeseries, triangular_kernel, "same")     #TODO: consider scipy.signal.fftconvolve as alt.
     end
-    return convolved_series 
+    LFP = makechunks(convolved_series, n_neurons)
+    return sum(LFP)
 end
 
-# Load theta file only
-spikes = load_spike_files(patterns, labels[1]*"-1", populations)
+global ppsave = []
+global gcsave = []
+lfp_save_pp = OrderedDict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
+lfp_save_gc = OrderedDict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
+for run_ ∈ 1:n_runs
+    for i ∈ 1:length(labels)
+        spikes = load_spike_files(patterns, labels[i]*"-$run_", populations)
 
-# separate above df into neuronal populations
-pp_a = spikes[(spikes.Population .== "PP") .& (spikes.Pattern .== 1), ["Neuron", "Time"]]
-gc_test = spikes[(spikes.Population .== "DG") .& (spikes.Pattern .== 1), ["Neuron", "Time"]]
+        for p ∈ unique(spikes.Pattern)
+            # TODO: change so this works ∀ neurons
+            pp = spikes[(spikes.Population .== "PP") .& (spikes.Pattern .== p), :]
+            gc = spikes[(spikes.Population .== "DG") .& (spikes.Pattern .== p), :]
+            
+            #compute LFP
+            pp_lfp = [compute_LFP(pp, 100)]
+            gc_lfp = [compute_LFP(gc, 500)]
 
-# testing compute_LFP f'n above
-pp_lfp = compute_LFP(pp_a, 100)
-fig = plot(pp_lfp[1:750])       # this looks v promising
-savefig(fig, "figures/lfp/test_pp.png")
+            #save LFP for each pattern:
+            global ppsave = append!(ppsave, pp_lfp)
+            global gcsave = append!(gcsave, gc_lfp)
+        end
+        # average LFP across all patterns
+        sum_lfp_pat_pp = [sum(ppsave)/length(ppsave[1])]
+        sum_lfp_pat_gc = [sum(gcsave)/length(gcsave[1])]
 
-gc_lfp = compute_LFP(gc_test, 500)
-convolution_size=length(gc_lfp)
-midpoint = div(convolution_size, 2)     #returns int
+        # save summated lfp/freq band
+        append!(lfp_save_pp[labels[i]], sum_lfp_pat_pp)
+        append!(lfp_save_gc[labels[i]], sum_lfp_pat_gc)
+    end
+end
 
-#print(convolution_size)
-#print(midpoint)
+l = @layout [grid(2,1) a{0.5w}]
+theta_lfp_pp = plot(lfp_save_pp["theta"][1], 
+            color = :black,
+            xlabel = "Time (ms)",
+            ylabel = "Population Activity",
+            label = L"\theta_{PP}"
+)          
+#savefig(fig, "figures/lfp/test_pp.png")
 
-#TODO: understand where would be best to truncate, how to interpret axes
-fig = plot(gc_lfp[(midpoint-7500):(midpoint+7500)])   
-savefig(fig, "figures/lfp/test_gc.png")
+theta_lfp_gc = plot(lfp_save_gc["theta"][1], 
+            color = :black,
+            xlabel = "Time (ms)",
+            ylabel = "Population Activity",
+            label = L"GC"
+)
+#savefig(fig, "figures/lfp/test_gc.png")
+
+# POWER SPECTRA 
+restruct_gclfps = zeros((duration, length(labels)))
+restruct_pplfps = zeros((duration, length(labels)))
+
+for i ∈ 1:length(labels)
+    restruct_gclfps[:,i] = lfp_save_gc[labels[i]][n_runs]
+    restruct_pplfps[:,i] = lfp_save_pp[labels[i]][n_runs]
+end
+
+S = spectra(restruct_gclfps, duration, duration; tapering=hamming) #TODO: learn what this 'tapering' is.
+powerfig = plot(S, fmax = 40, label = freqlabels, legend = :topright, ylabel = "Power "*L"(\mu V^2)")
+#savefig(powerfig, "figures/lfp/powerspectra_gcs.png")
+
+sumfig = plot(theta_lfp_pp, theta_lfp_gc, powerfig, layout=l)
+savefig(sumfig, "figures/lfp/powerspectra_lfps_gcs.png")
+
 

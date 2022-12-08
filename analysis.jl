@@ -6,10 +6,10 @@ include("utilities.jl");
 default(show=false)
 
 # HYPERPARAMS
-n_runs = 10
+n_runs = 2
 patterns = 0:12
-labels = ["theta" , "alpha", "gamma"]
-freqs = [L"\theta", L"\alpha", L"\gamma"]
+labels = ["theta" , "ftheta", "alpha", "beta", "gamma"]
+freqs = [L"\theta", L"\theta_{fast}", L"\alpha", L"\beta",  L"\gamma"]
 fig_ext = ".png"
 
 default(fontfamily="Computer Modern")
@@ -48,14 +48,15 @@ end
 
 
 # PATTERN SEPARATION CURVES
-colors=[:blue, :red, :green]
+colors=[:blue, :red, :green, :grey, :black]
 global psfig = plot([0;1], [0;1], ls=:dash, c=:black, 
                         xlabel="Input Correlation "*L"(r_{in})", 
                         ylabel="Output Correlation "*L"(r_{out})", 
                         dpi=300, size=(350,350),  # increase resolution of image
                         label=nothing, legend=:topleft)
 
-psc = Dict("theta"=>[], "alpha"=>[], "gamma"=>[])
+#psc = Dict("theta"=>[], "alpha"=>[], "gamma"=>[])
+psc = Dict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
 for i ∈ 1:length(labels)
     for run ∈ 1:n_runs
         spikes = load_spike_files(patterns, labels[i]*"-$run", populations)
@@ -92,9 +93,16 @@ psfig
 savefig(psfig, "figures/pattern-separation/pattern-separation-curve"*fig_ext)
 
 # AREA UNDER PS CURVES 
-auc_save = Dict("theta"=>[], "alpha"=>[], "gamma"=>[])
-auc_means = Dict("theta"=>[], "alpha"=>[], "gamma"=>[])
-auc_ses = Dict("theta"=>[], "alpha"=>[], "gamma"=>[])
+
+#=
+auc_save = OrderedDict("theta"=>[], "alpha"=>[], "gamma"=>[])
+auc_means = OrderedDict("theta"=>[], "alpha"=>[], "gamma"=>[])
+auc_ses = OrderedDict("theta"=>[], "alpha"=>[], "gamma"=>[])
+=#
+
+auc_save = OrderedDict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
+auc_means = OrderedDict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
+auc_ses = OrderedDict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
 
 for i ∈ 1:length(labels)
     for run ∈ 1:n_runs
@@ -118,6 +126,7 @@ for i ∈ 1:length(labels)
         end
     end 
 end 
+
 unpack(a) = eltype(a[1])[el[1] for el in a]
 auc_fig = plot(freqs, 
                 unpack(collect(values(auc_means))), 

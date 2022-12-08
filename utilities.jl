@@ -3,7 +3,7 @@
 #       Functions for analysis of data, I/O, plotting, etc.
 #
 #######################################################################
-using DataFrames, CSV, Plots, PyCall, LsqFit, LaTeXStrings, Statistics
+using DataFrames, CSV, Plots, PyCall, LsqFit, LaTeXStrings, Statistics, DataStructures, FourierAnalysis
 np = pyimport("numpy")
 ss = pyimport("scipy.stats")
 
