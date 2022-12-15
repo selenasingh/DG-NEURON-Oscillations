@@ -7,7 +7,7 @@ default(show=false)
 default(fontfamily="Computer Modern")
 
 # HYPERPARAMS
-n_runs = 2
+n_runs = 3
 patterns = 0:12
 duration = 750
 labels = ["theta" , "ftheta", "alpha", "beta", "gamma"]
@@ -37,7 +37,7 @@ end
 function compute_LFP(
     spike_train::DataFrame, 
     n_neurons::Int64;
-    delta::Int64=10, 
+    delta::Int64=5, 
     n_bins::Int64=1,        
     duration::Float64=750.0)
     
@@ -91,24 +91,50 @@ for run_ ∈ 1:n_runs
     end
 end
 
-l = @layout [grid(2,1) a{0.5w}]
+#### GC Raster plots only ####
+gcs = Dict(
+    "DG" => [0, 500],
+)
+
+for run_ ∈ 1:n_runs
+    for i ∈ 1:length(labels)
+        spikes = load_spike_files(patterns, labels[i]*"-$run_", populations)
+
+        # CREATE RASTER PLOTS
+        for p ∈ unique(spikes.Pattern)
+            stimin = spikes[(spikes.Population .== "PP") .& (spikes.Pattern .== p), :]
+            plots = []
+            append!(plots, [raster_plot(stimin; ylab="PP")])
+            for pop ∈ keys(gcs)
+                lb, ub = populations[pop]
+                popspikes = spikes[(spikes.Population .== pop) .& (spikes.Pattern .== p),:]
+                append!(plots, [raster_plot(popspikes; xlab="", ylab=pop)])
+            end
+            fig = plot(reverse(plots)..., layout=grid(2, 1, heights=[0.8, 0.2]), size=(500, 400), dpi = 300)
+            savefig(fig, "figures/raster-plots/raster-gconly--"*string(p)*"-"*labels[i]*"-$run_"*".png")
+        end
+    end 
+end
+
+#-------PLOT LFPS
+l = @layout [grid(2,1, heights=[0.8, 0.2])]
 theta_lfp_pp = plot(lfp_save_pp["theta"][1], 
             color = :black,
             xlabel = "Time (ms)",
-            ylabel = "Population Activity",
-            label = L"\theta_{PP}"
+            ylabel = "PP",
+            label = nothing,
 )          
-#savefig(fig, "figures/lfp/test_pp.png")
 
 theta_lfp_gc = plot(lfp_save_gc["theta"][1], 
             color = :black,
-            xlabel = "Time (ms)",
-            ylabel = "Population Activity",
-            label = L"GC"
+            ylabel = "DG",
+            label = nothing,
 )
-#savefig(fig, "figures/lfp/test_gc.png")
 
-# POWER SPECTRA 
+sumfig = plot(theta_lfp_gc, theta_lfp_pp, layout=l, size=(500, 400), dpi=300)
+savefig(sumfig, "figures/lfp/lfps_gcs_pp.png")
+
+#-------POWER SPECTRA 
 restruct_gclfps = zeros((duration, length(labels)))
 restruct_pplfps = zeros((duration, length(labels)))
 
@@ -117,11 +143,37 @@ for i ∈ 1:length(labels)
     restruct_pplfps[:,i] = lfp_save_pp[labels[i]][n_runs]
 end
 
-S = spectra(restruct_gclfps, duration, duration; tapering=hamming) #TODO: learn what this 'tapering' is.
-powerfig = plot(S, fmax = 40, label = freqlabels, legend = :topright, ylabel = "Power "*L"(\mu V^2)")
-#savefig(powerfig, "figures/lfp/powerspectra_gcs.png")
+# Calculate power spectra
+S = spectra(restruct_gclfps, 500, duration; tapering=hamming) #TODO: learn what this 'tapering' is.
 
-sumfig = plot(theta_lfp_pp, theta_lfp_gc, powerfig, layout=l)
-savefig(sumfig, "figures/lfp/powerspectra_lfps_gcs.png")
+
+# SUM GAMMA POWER FOR 30Hz-100Hz
+norm_gamma_pwr = OrderedDict("theta"=>0.0, "ftheta"=>0.0, "alpha"=>0.0, "beta"=>0.0, "gamma"=>0.0)
+for freq ∈ 1:length(labels)
+    norm_gamma_pwr[labels[freq]] =sum(S.y[30:100,freq])
+end
+
+# PLOT GAMMA POWER BAR GRAPH 
+gamma_pwr = bar(vec(freqlabels), [norm_gamma_pwr[i] for i ∈ labels], label=false, 
+                color = "gray", xlabel = "PP Input Frequency", ylabel = L"\gamma"*" Power", 
+                xtickfont=font(12), ylims = (0,125), size = (350,350), dpi=300)
+savefig(gamma_pwr, "figures/lfp/gamma_pwr_bar.png")
+
+# PLOT RAW SPECTRA
+powerfig = plot(S, fmax = 50, label = freqlabels, legend = :topright, ylabel = "Power "*L"(\mu V^2)", dpi=300)
+savefig(powerfig, "figures/lfp/powerspectra_gcs.png")
+
+# PLOT HIGH FREQ RAW SPECTRA SEPERATELY
+powerfigstack = plot(S, layout=grid(5,1, heights=[0.2,0.2,0.2,0.2,0.2]), xticks = (collect(0:5:50)), 
+                xlims = (0,50), ylims=(0,35),label = freqlabels, linewidth = 3,
+                legend = :topright, ylabel = "Power "*L"(\mu V^2)", 
+                xlabel = "Frequency (Hz)", size=(500, 800), c=:black, grid=:none, dpi=300)
+savefig(powerfigstack, "figures/lfp/powerspectra_gcs_stacked.png")
+
+# PLOT FREQUENCY-TIME HEATMAP
+A = TFamplitude(lfp_save_gc["theta"][n_runs], 400, duration; fmax=40)
+freqtime = heatmap(A.y, xlabel = "Time (ms)", ylabel = "Frequency (Hz)", dpi=300)
+savefig(freqtime, "figures/lfp/gcs_freqtime.png")
+
 
 

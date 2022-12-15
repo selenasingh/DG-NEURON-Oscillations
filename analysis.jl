@@ -6,10 +6,11 @@ include("utilities.jl");
 default(show=false)
 
 # HYPERPARAMS
-n_runs = 2
+n_runs = 3
 patterns = 0:12
 labels = ["theta" , "ftheta", "alpha", "beta", "gamma"]
 freqs = [L"\theta", L"\theta_{fast}", L"\alpha", L"\beta",  L"\gamma"]
+
 fig_ext = ".png"
 
 default(fontfamily="Computer Modern")
@@ -40,7 +41,7 @@ for run_ ∈ 1:n_runs
                 popspikes = spikes[(spikes.Population .== pop) .& (spikes.Pattern .== p),:]
                 append!(plots, [raster_plot(popspikes; xlab="", ylab=pop)])
             end
-            fig = plot(reverse(plots)..., layout=grid(5, 1, heights=[0.15, 0.15, 0.15, 0.4, 0.15]), size=(400, 500))
+            fig = plot(reverse(plots)..., layout=grid(5, 1, heights=[0.15, 0.15, 0.15, 0.4, 0.15]), size=(400, 500), dpi = 300)
             savefig(fig, "figures/raster-plots/raster-"*string(p)*"-"*labels[i]*"-$run_"*fig_ext)
         end
     end 
@@ -55,7 +56,6 @@ global psfig = plot([0;1], [0;1], ls=:dash, c=:black,
                         dpi=300, size=(350,350),  # increase resolution of image
                         label=nothing, legend=:topleft)
 
-#psc = Dict("theta"=>[], "alpha"=>[], "gamma"=>[])
 psc = Dict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
 for i ∈ 1:length(labels)
     for run ∈ 1:n_runs
@@ -93,13 +93,6 @@ psfig
 savefig(psfig, "figures/pattern-separation/pattern-separation-curve"*fig_ext)
 
 # AREA UNDER PS CURVES 
-
-#=
-auc_save = OrderedDict("theta"=>[], "alpha"=>[], "gamma"=>[])
-auc_means = OrderedDict("theta"=>[], "alpha"=>[], "gamma"=>[])
-auc_ses = OrderedDict("theta"=>[], "alpha"=>[], "gamma"=>[])
-=#
-
 auc_save = OrderedDict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
 auc_means = OrderedDict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
 auc_ses = OrderedDict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
@@ -127,6 +120,9 @@ for i ∈ 1:length(labels)
     end 
 end 
 
+CSV.write("figures/pattern-separation/auc_means.csv", auc_means)
+CSV.write("figures/pattern-separation/auc_ses.csv", auc_ses)
+
 unpack(a) = eltype(a[1])[el[1] for el in a]
 auc_fig = plot(freqs, 
                 unpack(collect(values(auc_means))), 
@@ -136,7 +132,7 @@ auc_fig = plot(freqs,
                 c = :black, 
                 linewidth = 2,
                 yerror = unpack(collect(values(auc_ses))), 
-                dpi=300, size=(300,300),
+                dpi=300, size=(350,350),
                 label=nothing,
                 )
 savefig(auc_fig, "figures/pattern-separation/auc-curve"*fig_ext)
