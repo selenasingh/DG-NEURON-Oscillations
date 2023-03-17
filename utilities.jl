@@ -103,7 +103,7 @@ function spike_train_correlation(
     n_neurons::Int64;
     delta::Int64=20, 
     n_bins::Int64=1, 
-    duration::Float64=750.0)
+    duration::Float64=2000.0)
     
     # Create kernel
     tri_rng = collect(1:round(Int64, delta/n_bins))
@@ -139,7 +139,7 @@ function pattern_separation_curve(
     n_granule_cells::Int64;
     delta::Int64=20,
     n_bins::Int64=1,
-    duration::Float64=750.0)
+    duration::Float64=2000.0)
 
     out = DataFrame()
     n_patterns = unique(spike_times.Pattern) |> length

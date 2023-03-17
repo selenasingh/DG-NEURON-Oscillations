@@ -9,7 +9,7 @@ default(fontfamily="Computer Modern")
 # HYPERPARAMS
 n_runs = 3
 patterns = 0:12
-duration = 750
+duration = 2000
 labels = ["theta" , "ftheta", "alpha", "beta", "gamma"]
 freqlabels = [L"\theta" L"\theta_{fast}" L"\alpha" L"\beta"  L"\gamma"]
 
@@ -39,7 +39,7 @@ function compute_LFP(
     n_neurons::Int64;
     delta::Int64=5, 
     n_bins::Int64=1,        
-    duration::Float64=750.0)
+    duration::Float64=2000.0)
     
     # Create kernel
     tri_rng = collect(1:round(Int64, delta/n_bins))
@@ -146,18 +146,45 @@ end
 # Calculate power spectra
 S = spectra(restruct_gclfps, 500, duration; tapering=hamming) #TODO: learn what this 'tapering' is.
 
+# Calculate power spectra
+S = spectra(restruct_gclfps, 500, duration; tapering=hamming) #TODO: learn what this 'tapering' is.
 
-# SUM GAMMA POWER FOR 30Hz-100Hz
-norm_gamma_pwr = OrderedDict("theta"=>0.0, "ftheta"=>0.0, "alpha"=>0.0, "beta"=>0.0, "gamma"=>0.0)
+# SUM LOW GAMMA POWER FOR 30Hz-60Hz
+norm_gamma_pwrL = OrderedDict("theta"=>0.0, "ftheta"=>0.0, "alpha"=>0.0, "beta"=>0.0, "gamma"=>0.0)
 for freq ∈ 1:length(labels)
-    norm_gamma_pwr[labels[freq]] =sum(S.y[30:100,freq])
+    norm_gamma_pwrL[labels[freq]] =sum(S.y[30:39,freq])
 end
 
+# SUM MED GAMMA POWER FOR 30Hz-60Hz
+norm_gamma_pwrM = OrderedDict("theta"=>0.0, "ftheta"=>0.0, "alpha"=>0.0, "beta"=>0.0, "gamma"=>0.0)
+for freq ∈ 1:length(labels)
+    norm_gamma_pwrM[labels[freq]] =sum(S.y[40:59,freq])
+end
+
+# SUM HIGH GAMMA POWER FOR 60-200Hz
+norm_gamma_pwrH = OrderedDict("theta"=>0.0, "ftheta"=>0.0, "alpha"=>0.0, "beta"=>0.0, "gamma"=>0.0)
+for freq ∈ 1:length(labels)
+    norm_gamma_pwrH[labels[freq]] =sum(S.y[60:200,freq])
+end
+
+CSV.write("figures/lfp/gamma_pwr_low.csv", norm_gamma_pwrL)
+CSV.write("figures/lfp/gamma_pwr_med.csv", norm_gamma_pwrM)
+CSV.write("figures/lfp/gamma_pwr_high.csv", norm_gamma_pwrH)
+
 # PLOT GAMMA POWER BAR GRAPH 
-gamma_pwr = bar(vec(freqlabels), [norm_gamma_pwr[i] for i ∈ labels], label=false, 
-                color = "gray", xlabel = "PP Input Frequency", ylabel = L"\gamma"*" Power", 
-                xtickfont=font(12), ylims = (0,125), size = (350,350), dpi=300)
+gamma_pwr = bar(vec(freqlabels), [[norm_gamma_pwrM[i] for i ∈ labels] [norm_gamma_pwrL[i] for i ∈ labels] [norm_gamma_pwrH[i] for i ∈ labels]], 
+                        labels = ["Low "*L"\gamma" "Med. "*L"\gamma" "High "*L"\gamma"], 
+                        color = [:grey75 :grey50 :black], xlabel = "Frequency Band", ylabel = L"\gamma"*" Power", 
+                        xtickfont=font(12), size = (350,350), legend = :topleft, dpi=300)
 savefig(gamma_pwr, "figures/lfp/gamma_pwr_bar.png")
+
+
+# PLOT GAMMA POWER LINE GRAPH
+gamma_pwr_line = plot(vec(freqlabels), [[norm_gamma_pwrL[i] for i ∈ labels] [norm_gamma_pwrM[i] for i ∈ labels] [norm_gamma_pwrH[i] for i ∈ labels]], 
+                        labels = ["Low "*L"\gamma" "Med. "*L"\gamma" "High "*L"\gamma"], xtickfont=font(12),
+                        color = [:grey75 :grey50 :black], ylims = (0, 40), linewidth = 2,  xlabel = "Input Frequency Band", ylabel = L"\gamma"*" Power", 
+                        size = (350,350), legend = :topleft, dpi=300)
+savefig(gamma_pwr_line, "figures/lfp/gamma_pwr_line.png")
 
 # PLOT RAW SPECTRA
 powerfig = plot(S, fmax = 50, label = freqlabels, legend = :topright, ylabel = "Power "*L"(\mu V^2)", dpi=300)

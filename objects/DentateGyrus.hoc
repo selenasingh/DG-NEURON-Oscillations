@@ -136,7 +136,7 @@ begintemplate DentateGyrus
         */
         n_patterns = 12    // number of patterns to simulate (should be 12 for the full sim)
         dt = 0.1            // simulation time step [ms]
-        tstop = 750         // total simulation time [ms]
+        tstop = 2000         // total simulation time [ms]
         trial = $1          // trialnumber = seed of simulation [ GENERALIZE ]
         trial_noise = 1     // seed for noise to PP
         rseed  = $1         // pseudorandom number generator seed
@@ -260,9 +260,9 @@ begintemplate DentateGyrus
         PP_rate_        = 10.       // rate of PP Poisson input
         PP_rate_noise_  = 0.        // rate of PP Poisson noise
         PP_box_nr_      = 6         // number of active PPs            
-        PP_box_stop_	= 750.       // time of box [ms]
+        PP_box_stop_	= 2000.       // time of box [ms]
         PP_box_start_	= 1.        // shift of box [ms]
-        PP_box_nspk_    = 25        // number of spike per active PP   
+        PP_box_nspk_    = 25         // number of spike per active PP  
         PP_freq_        = 3         // oscillation frequency
 
         if (PP_input2MC_ != 0) {
@@ -277,14 +277,14 @@ begintemplate DentateGyrus
         Arguments: 
 
         */
-        scale_factor                    = 0.07             // coefficient for scale PP and scale PP2BC
+        scale_factor                    = 1.75            // coefficient for scale PP and scale PP2BC
         p_sprouted_                     = 0                 // proportion of other GCs to which a GC will connect 
         scale_gpas_dg_                  = 1                 // scaling [%/100] of gpas of th GC model
         scale_sk_dg_                    = 1                 // scaling of Ca-dependent K (SK) of th GC model
         scale_kir_                      = 1                 // scaling of KIR conductance in GC model
         scale_gabaa_                    = 1                 // scaling of GABAA in GC model
         scale_PP_strength               = scale_factor*(1-test_sa)   // scaling of synaptic weight of PP
-        scale_PP2BC_strength            = (scale_factor/2)*(1-test_sa)     // scaling of synaptic weight PP->BC (100% for original value which was 50% of PP->GC strength..)
+        scale_PP2BC_strength            = 1*(1-test_sa)     // scaling of synaptic weight PP->BC (100% for original value which was 50% of PP->GC strength..)
         scale_PP2HC_strength            = 0                 // scaling of synaptic weight PP->HIPP (set to 0% because there are no PP->HIPP connections...)
         scale_HC2GC_strength            = 1*(1-test_sa)     // scaling of synaptic weight HC->GC (beta_HIPP in Myers and Scharfman, 2009)
         scale_MC2GC_strength            = 1*(1-test_sa)     // scaling of synaptic weight MC->GC (beta_HIPP in Myers and Scharfman, 2009)
@@ -350,11 +350,11 @@ begintemplate DentateGyrus
         // Theta oscillations
         if (strcmp($s1, "theta") == 0) {
             PP_freq_ = 3                        // Zheng et al. 
-            PP_box_nspk_  = 35 
+            PP_box_nspk_  = 70 
             PP_min_invl_ = 5                    // 10 optimal for theta
             PP_scale_max_invl_ = 100
-            scale_na_conductances = 1
-            scale_kdr_conductances = 1
+            scale_na_conductances = 2.5         // gives us U-shaped curve
+            scale_kdr_conductances = 2.5        // gives us U-shaped curve
             scale_ka_conductances = 1
             gbar_ht_ = 0.0004 
             gbar_lt_ = 0
@@ -370,11 +370,11 @@ begintemplate DentateGyrus
         // Fast theta oscillations
         if (strcmp($s1, "ftheta") == 0) {
             PP_freq_ = 8                        // Zheng et al. 
-            PP_box_nspk_  = 60 
+            PP_box_nspk_  = 100 
             PP_min_invl_ = 5                    // 10 optimal for theta
             PP_scale_max_invl_ = 100
-            scale_na_conductances = 1
-            scale_kdr_conductances = 1
+            scale_na_conductances = 2.5         // gives us U-shaped curve
+            scale_kdr_conductances = 2.5        // gives us U-shaped curve
             scale_ka_conductances = 1
             gbar_ht_ = 0.0004 
             gbar_lt_ = 0
@@ -390,11 +390,11 @@ begintemplate DentateGyrus
         // Alpha oscillations
         if (strcmp($s1, "alpha") == 0) {
             PP_freq_ = 12                       // Zheng et al. 
-            PP_box_nspk_  = 80
+            PP_box_nspk_  = 120
             PP_min_invl_ = 5
             PP_scale_max_invl_ = 100
-            scale_na_conductances = 1
-            scale_kdr_conductances = 1
+            scale_na_conductances = 2.5         // gives us U-shaped curve
+            scale_kdr_conductances = 2.5        // gives us U-shaped curve
             scale_ka_conductances = 1
             gbar_ht_ = 0.0004 
             gbar_lt_ = 0
@@ -409,11 +409,11 @@ begintemplate DentateGyrus
         // Beta oscillations
         if (strcmp($s1, "beta") == 0) {
             PP_freq_ = 20                       // Zheng et al. 
-            PP_box_nspk_  = 100
+            PP_box_nspk_  = 200
             PP_min_invl_ = 5
             PP_scale_max_invl_ = 100
-            scale_na_conductances = 1
-            scale_kdr_conductances = 1
+            scale_na_conductances = 2.5         // gives us U-shaped curve
+            scale_kdr_conductances = 2.5        // gives us U-shaped curve
             scale_ka_conductances = 1
             gbar_ht_ = 0.0004 
             gbar_lt_ = 0
@@ -431,8 +431,8 @@ begintemplate DentateGyrus
             PP_box_nspk_  = 300
             PP_min_invl_ = 3                    // 1 optimal for gamma
             PP_scale_max_invl_ = 100
-            scale_na_conductances = 1
-            scale_kdr_conductances = 1
+            scale_na_conductances = 2.5         // gives us U-shaped curve
+            scale_kdr_conductances = 2.5        // gives us U-shaped curve
             scale_ka_conductances = 1
             gbar_ht_ = 0.0004 
             gbar_lt_ = 0

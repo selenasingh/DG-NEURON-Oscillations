@@ -56,6 +56,7 @@ global psfig = plot([0;1], [0;1], ls=:dash, c=:black,
                         dpi=300, size=(350,350),  # increase resolution of image
                         label=nothing, legend=:topleft)
 
+#psc = Dict("theta"=>[], "alpha"=>[], "gamma"=>[])
 psc = Dict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
 for i ∈ 1:length(labels)
     for run ∈ 1:n_runs
@@ -93,6 +94,13 @@ psfig
 savefig(psfig, "figures/pattern-separation/pattern-separation-curve"*fig_ext)
 
 # AREA UNDER PS CURVES 
+
+#=
+auc_save = OrderedDict("theta"=>[], "alpha"=>[], "gamma"=>[])
+auc_means = OrderedDict("theta"=>[], "alpha"=>[], "gamma"=>[])
+auc_ses = OrderedDict("theta"=>[], "alpha"=>[], "gamma"=>[])
+=#
+
 auc_save = OrderedDict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
 auc_means = OrderedDict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
 auc_ses = OrderedDict("theta"=>[], "ftheta"=>[], "alpha"=>[], "beta"=>[], "gamma"=>[])
@@ -126,7 +134,7 @@ CSV.write("figures/pattern-separation/auc_ses.csv", auc_ses)
 unpack(a) = eltype(a[1])[el[1] for el in a]
 auc_fig = plot(freqs, 
                 unpack(collect(values(auc_means))), 
-                xlabel = "Frequency Band",
+                xlabel = "Input Frequency Band",
                 xtickfont=font(12),
                 ylabel = L"AUC_{PS}",
                 c = :black, 
@@ -136,3 +144,15 @@ auc_fig = plot(freqs,
                 label=nothing,
                 )
 savefig(auc_fig, "figures/pattern-separation/auc-curve"*fig_ext)
+
+auc_fig_line = plot([3, 8, 12, 20, 35], 
+                    unpack(collect(values(auc_means))), 
+                    xlabel = "Input Frequency",
+                    ylabel = L"AUC_{PS}",
+                    c = :black, 
+                    linewidth = 2,
+                    yerror = unpack(collect(values(auc_ses))), 
+                    dpi=300, size=(350,350),
+                    label=nothing,
+                    )
+savefig(auc_fig_line, "figures/pattern-separation/auc-curve-line"*fig_ext)
