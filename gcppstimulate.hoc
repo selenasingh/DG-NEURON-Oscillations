@@ -1,0 +1,54 @@
+// gcppstimulate 
+
+// Hyperparameters 
+N_RUNS =  1 // Number of runs per group
+PP_freq_ = 1 //
+
+// Load cell templates and network 
+err_ = load_file("objects/GC.hoc")
+err_ = load_file("objects/PP.hoc")
+err_ = load_file("objects/GCPP.hoc")
+
+// Instantiate cell objects and labels
+objref th, fth, al, bt, gm
+strdef tlab, ftlab, alab, blab, glab 
+
+// Do N_RUNS Runs for each network setting
+for random_state = 1, N_RUNS {
+
+    PP_freq_ = 3
+    sprint(tlab, "%s-%d", "theta", random_state) 
+    th = new GCPP(tlab, random_state, "theta")
+
+    print "RUNNING GCPP ", tlab
+    th.run()
+
+    PP_freq_ = 8
+    sprint(ftlab, "%s-%d", "ftheta", random_state) 
+    fth = new GCPP(ftlab, random_state, "ftheta")
+
+    print "RUNNING GCPP ", ftlab
+    fth.run()
+    
+    PP_freq_ = 12
+    sprint(alab, "%s-%d", "alpha", random_state)
+    al = new GCPP(alab, random_state, "alpha")
+
+    print "RUNNING GCPP ", alab
+    al.run()
+    
+    PP_freq_ = 20
+    sprint(blab, "%s-%d", "beta", random_state)
+    bt = new GCPP(blab, random_state, "beta")
+
+    print "RUNNING GCPP ", blab
+    bt.run()
+
+    PP_freq_ = 30
+    sprint(glab, "%s-%d", "gamma", random_state)
+    gm = new GCPP(glab, random_state, "gamma")
+
+    print "RUNNING GCPP ", glab
+    gm.run()
+    
+}
