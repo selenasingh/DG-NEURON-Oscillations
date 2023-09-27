@@ -277,7 +277,7 @@ begintemplate DentateGyrus
         Arguments: 
 
         */
-        scale_factor                    = 1.75            // coefficient for scale PP and scale PP2BC
+        scale_factor                    = 1.75            // coefficient for scale PP and scale PP2BC and PP2GC. From rate model analysis. 
         p_sprouted_                     = 0                 // proportion of other GCs to which a GC will connect 
         scale_gpas_dg_                  = 1                 // scaling [%/100] of gpas of th GC model
         scale_sk_dg_                    = 1                 // scaling of Ca-dependent K (SK) of th GC model

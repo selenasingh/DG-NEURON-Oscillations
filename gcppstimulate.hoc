@@ -1,8 +1,9 @@
 // gcppstimulate 
+// stimulate one GC by one oscillating PP neuron
 
 // Hyperparameters 
 N_RUNS =  1 // Number of runs per group
-PP_freq_ = 1 //
+PP_freq_ = 1 // Ensures that PP.hoc loads oscillatory PP mechanism. TODO: Re-write this s.t. there's no dependancy on external variable
 
 // Load cell templates and network 
 err_ = load_file("objects/GC.hoc")
