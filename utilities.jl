@@ -207,7 +207,7 @@ Returns a raster plot
 """
 function raster_plot(
     spikes::DataFrame; 
-    xlims::Vector=[0,750],
+    xlims::Vector=[0,2000],
     xlab::String="Time (ms)",
     ylab::String="Neuron ID"
     )
