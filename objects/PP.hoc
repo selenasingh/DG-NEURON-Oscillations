@@ -20,6 +20,7 @@ begintemplate PPstim
 //external PP_rate_, tstop
 //external PP_box_start_,PP_box_stop_			// stimulation window instead of Poisson input ...
 
+external PP_freq_
 public pp, connect_pre, is_art, acell
 create acell
 objref pp
@@ -32,12 +33,30 @@ proc init() {
     tstop = $3
     PP_box_start_ = $4
     PP_box_stop_ = $5
+    PP_freq_ = $6
+    PP_min_invl_ = $7
+    PP_scale_max_invl_ = $8
 }
 
+
+
 proc actemp() {
-      acell pp = new NetStimBox(.5)
-	  pp.start = PP_box_start_
-	  pp.forcestop = PP_box_stop_
+    //TODO: Re-write this s.t. there's no dependancy on external variable
+    if (PP_freq_){                      
+        acell pp = new NetStimOsc(.5)
+	        pp.start = PP_box_start_
+	        pp.forcestop = PP_box_stop_ 
+            pp.freq = PP_freq_
+            pp.min_invl = PP_min_invl_
+            pp.scale_max_invl = PP_scale_max_invl_
+        print "using NetStimOsc"
+    }else{
+        acell pp = new NetStimBox(0.5)
+            pp.start = PP_box_start_
+            pp.forcestop = PP_box_stop_
+        print "using NetStimBox"
+    }
+      
 }
 
 func is_art() {return 1}

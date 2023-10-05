@@ -1,14 +1,14 @@
+// gcppstimulate 
+// stimulate one GC by one oscillating PP neuron
+
 // Hyperparameters 
-N_RUNS =  3 // Number of runs per group
+N_RUNS =  1 // Number of runs per group
 PP_freq_ = 1 // Ensures that PP.hoc loads oscillatory PP mechanism. TODO: Re-write this s.t. there's no dependancy on external variable
 
 // Load cell templates and network 
 err_ = load_file("objects/GC.hoc")
-err_ = load_file("objects/BC.hoc")
-err_ = load_file("objects/MC.hoc")
-err_ = load_file("objects/HIPP.hoc")
 err_ = load_file("objects/PP.hoc")
-err_ = load_file("objects/DentateGyrus.hoc")
+err_ = load_file("objects/GCPP.hoc")
 
 // Instantiate cell objects and labels
 objref th, fth, al, bt, gm
@@ -19,37 +19,37 @@ for random_state = 1, N_RUNS {
 
     PP_freq_ = 3
     sprint(tlab, "%s-%d", "theta", random_state) 
-    th = new DentateGyrus(tlab, random_state, "theta")
+    th = new GCPP(tlab, random_state, "theta")
 
-    print "RUNNING DENTATE GYRUS ", tlab
+    print "RUNNING GCPP ", tlab
     th.run()
 
     PP_freq_ = 8
     sprint(ftlab, "%s-%d", "ftheta", random_state) 
-    fth = new DentateGyrus(ftlab, random_state, "ftheta")
+    fth = new GCPP(ftlab, random_state, "ftheta")
 
-    print "RUNNING DENTATE GYRUS ", ftlab
+    print "RUNNING GCPP ", ftlab
     fth.run()
     
     PP_freq_ = 12
     sprint(alab, "%s-%d", "alpha", random_state)
-    al = new DentateGyrus(alab, random_state, "alpha")
+    al = new GCPP(alab, random_state, "alpha")
 
-    print "RUNNING DENTATE GYRUS ", alab
+    print "RUNNING GCPP ", alab
     al.run()
     
     PP_freq_ = 20
     sprint(blab, "%s-%d", "beta", random_state)
-    bt = new DentateGyrus(blab, random_state, "beta")
+    bt = new GCPP(blab, random_state, "beta")
 
-    print "RUNNING DENTATE GYRUS ", blab
+    print "RUNNING GCPP ", blab
     bt.run()
 
     PP_freq_ = 30
     sprint(glab, "%s-%d", "gamma", random_state)
-    gm = new DentateGyrus(glab, random_state, "gamma")
+    gm = new GCPP(glab, random_state, "gamma")
 
-    print "RUNNING DENTATE GYRUS ", glab
+    print "RUNNING GCPP ", glab
     gm.run()
     
 }

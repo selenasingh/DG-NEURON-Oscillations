@@ -1,0 +1,847 @@
+// REDUCED CIRCUIT: 1 PP to 1 GC, oscillating inputs. 
+// Structured based on DentateGyrus.hoc, to keep randomization the same as full network.
+// NOTE: 2 PP cells are initialized, but only 1 is connected to GC per simulation run.
+// TODO: understand what is going on with above note.
+
+// Load ranstream
+err_ = load_file("ranstream.hoc")
+
+begintemplate GCPP
+    // Public methods
+    public init, run
+
+    // Simulation related declarations
+    //      Random number generators 
+    objref rnd_pp2gc
+    objref rdsynb, rdsyna 
+    objref rdsa
+    
+    // Declare cvode
+    objref cvode
+
+    // Data management related declarations 
+    public VmT, VmMat, idname
+    objref Spike[726]       // Binary representations of spikes
+    objref Spike_times[726] // Spike times for each cell
+    objref VmT              // Vector storing time index
+    objref VmMat[726]       // One vector per cell storing membrane potential
+    objref efile            // Membrane potential storage file
+
+    // Declarations related to debugging 
+    objref vec_stim[2], vec_stim_noise[2]
+    objref distri_gc_input_
+
+    // Network related declarations
+    public ngcell, npp, ntotal
+    public p_sprouted_, scale_gpas_dg_, scale_sk_dg_, scale_kir_, scale_gabaa_
+    public scale_PP_strength 
+    public cells, nclist
+    objref cells , Gcell[1]
+    objref PPSt[2], PPSt_noise[1]
+    objref rs, rs_noise, rslist, rs_noiselist, pp_start, pp_noise_start
+    objref nclist, netcon, netcon_d[2], netcon_d_noise[1]
+    objref pp2gc
+    create aacell // artificial cell if windows (boxed) activation [ TODO ] - Study this more
+
+    proc init() {
+        /* Initialization of the DentateGyrus object
+        
+        Arguments: 
+            $s1 : str : A label for this simulation 
+            $2  : int : Random state (global RNG seed)
+            $s3 : str : Name of the group being simulated
+        */
+        strdef idname, group
+        idname = $s1
+        random_state = $2
+        group = $s3
+
+        // Specify directory to save data
+        // [ TODO ] - Allow this to be changed optionally
+        //              without having to specify it 
+        //              every time. I.e. need to look at 
+        //              how one can specify default
+        //              arguments to functions in NEURON
+        strdef datadir
+        datadir = "data/gcpp/"
+
+        // Simulation and data storage parameters
+        set_simulation_parameters(random_state)
+        set_data_management_params()
+
+        // Set parameters related to network
+        set_neuron_population_params()
+        set_perforant_path_input_params()
+        set_connectivity_params()
+
+        // Initialize pseudorandom number generators
+        set_pseudorandom_number_generators()
+
+        // Parameter modifications
+        //lesions(group)
+        oscillation_param_settings(group)
+        //yim_param_modifications(fig)
+
+    }
+
+    // ########################################################################
+    //  FUNCTIONS FOR SETTING PARAMETERS, HOUSEKEEPING, ETC
+    // ########################################################################
+    proc set_simulation_parameters() {
+        /* Sets parameters for numerical aspects of the simulation 
+        
+        Arguments: 
+            $1 : int :  Global RNG seed
+        */
+        n_patterns = 1    // number of patterns to simulate (should be 12 for the full sim)
+        dt = 0.1            // simulation time step [ms]
+        tstop = 2000         // total simulation time [ms]
+        trial = $1          // trialnumber = seed of simulation [ GENERALIZE ]
+        trial_noise = 1     // seed for noise to PP
+        rseed  = $1         // pseudorandom number generator seed
+        debug_ = 2
+
+        spontaneous_activity_ = 0 // whether the GC neuron is spontaneously active
+        test_sa = 0               // 1 if we are testing spontaneous GC activity (cuts all inputs to GCs)
+
+    }
+
+    proc set_pseudorandom_number_generators(){
+        /* Create the pseudorandom number generators for the network 
+
+        TODO: 
+            - Pass argument to ranstream rather than requiring external
+        */
+
+        // PP -> {GC}
+        rnd_pp2gc  = new Random(rseed)    
+        rnd_pp2gc.discunif(0,npp-1)
+
+        // RNGs for synapses
+        rdsyna = new Random(rseed)
+        rdsynb = new Random(rseed)
+        rdsyna.discunif(0, 1)
+        rdsynb.discunif(0, 3)
+
+        // RNG for spontaneous activity 
+        rdsa = new Random(rseed)
+        rdsa.discunif(0, ngcell-1)
+    }
+
+    proc set_data_management_params(){
+        /* Parameters for how data are managed during the simulation. 
+        */
+
+        // Define file names for simulation results output
+        strdef suffix 
+        suffix = "txt"
+
+        // Flags about what to print
+        print_Vtrace 	= 1             // print voltage trace to file
+        print_Raster 	= 1             // print spike raster to file
+        print_template 	= 1             // write out spike sequence into template file
+        print_GC_sprouting_input_ = 0	// calculates and print out GC sprouting input number distribution
+        print_stim_ 	 = 1             // print stimulus to GCs for debug purpose..
+        print_stim_noise = 1            // print noise to GCs for debug purpose.. 
+    }
+
+    proc set_neuron_population_params(){
+        /* Initialize the number of cells of each type in the networks
+
+        TODO: 
+            - Generalize to allow these to vary
+        */
+        ngcell = 1		    // number of GCs 
+        npp = 2               // ECII Neurons (Myers and Scharfman, 2009)
+
+        // Add 2*npp because of PP input and PP noise...
+        ntotal = ngcell + npp 
+
+        // Neuronal params 
+        v_init = -77.71
+
+    }
+
+    proc set_perforant_path_input_params() {
+        /*  Set parameters for the perforant path stimulation 
+        */
+        PP_nstimulus_ 	= 1         // one input per GC
+        PP_input2MC_  	= 0         // stimulate MC with PP
+        PP_rate_        = 10.       // rate of PP Poisson input
+        PP_rate_noise_  = 0.        // rate of PP Poisson noise
+        PP_box_nr_      = 1         // number of active PPs            
+        PP_box_stop_	= 2000.       // time of box [ms]
+        PP_box_start_	= 1.        // shift of box [ms]
+        PP_box_nspk_    = 3         // number of spike per active PP  
+        PP_freq_        = 0         // oscillation frequency
+
+        if (PP_input2MC_ != 0) {
+            print "PP stimulation not yet implemented if stimulation of also MCs...."      
+            quit()
+        }
+    }
+
+    proc set_connectivity_params() {
+        /* Parameters related to network connectivity 
+
+        Arguments: 
+
+        */
+        scale_factor                    = 1.75            // coefficient for scale PP and scale PP2BC
+        scale_gpas_dg_                  = 1                 // scaling [%/100] of gpas of th GC model
+        scale_sk_dg_                    = 1                 // scaling of Ca-dependent K (SK) of th GC model
+        scale_kir_                      = 1                 // scaling of KIR conductance in GC model
+        scale_gabaa_                    = 1                 // scaling of GABAA in GC model
+        scale_PP_strength               = scale_factor*(1-test_sa)   // scaling of synaptic weight of PP
+        spontaneous_activity_strength   = 0              // scaling of the strength of synaptic weight for the spontaneous AP generators
+
+    }
+
+    proc oscillation_param_settings() {
+        /* Sets different parameters for oscillation related 
+            experiments
+
+        Arguments:
+            $s1 : str : Which frequency we are simulating
+
+        */
+
+        // Theta oscillations
+        if (strcmp($s1, "theta") == 0) {
+            PP_freq_ = 3                        // Zheng et al. 
+            PP_box_nspk_  = 70 
+            PP_min_invl_ = 5                   
+            PP_scale_max_invl_ = 100
+            scale_na_conductances = 2.5
+            scale_kdr_conductances = 2.5
+            scale_ka_conductances = 1
+            gbar_ht_ = 0.0004 
+            gbar_lt_ = 0
+            scale_size_ = 1
+            scale_gpas_dg_ = 1
+            scale_sk_dg_ = 1
+            scale_gabaa_ = 1
+            scale_kir_ = 0
+            spontaneous_activity_rate = 0.25     // In Hz
+
+        }
+
+        // Fast theta oscillations
+        if (strcmp($s1, "ftheta") == 0) {
+            PP_freq_ = 8                        // Zheng et al. 
+            PP_box_nspk_  = 100 
+            PP_min_invl_ = 5                    
+            PP_scale_max_invl_ = 100
+            scale_na_conductances = 2.5
+            scale_kdr_conductances = 2.5
+            scale_ka_conductances = 1
+            gbar_ht_ = 0.0004 
+            gbar_lt_ = 0
+            scale_size_ = 1
+            scale_gpas_dg_ = 1
+            scale_sk_dg_ = 1
+            scale_gabaa_ = 1
+            scale_kir_ = 0
+            spontaneous_activity_rate = 0.25     // In Hz
+
+        }
+
+        // Alpha oscillations
+        if (strcmp($s1, "alpha") == 0) {
+            PP_freq_ = 12                       // Zheng et al. 
+            PP_box_nspk_  = 120
+            PP_min_invl_ = 5
+            PP_scale_max_invl_ = 100
+            scale_na_conductances = 2.5
+            scale_kdr_conductances = 2.5
+            scale_ka_conductances = 1
+            gbar_ht_ = 0.0004 
+            gbar_lt_ = 0
+            scale_size_ = 1
+            scale_gpas_dg_ = 1
+            scale_sk_dg_ = 1
+            scale_gabaa_ = 1
+            scale_kir_ = 0
+            spontaneous_activity_rate = 0.25     // In Hz
+        }
+
+        // Beta oscillations
+        if (strcmp($s1, "beta") == 0) {
+            PP_freq_ = 20                       // Zheng et al. 
+            PP_box_nspk_  = 200
+            PP_min_invl_ = 5
+            PP_scale_max_invl_ = 100
+            scale_na_conductances = 2.5
+            scale_kdr_conductances = 2.5
+            scale_ka_conductances = 1
+            gbar_ht_ = 0.0004 
+            gbar_lt_ = 0
+            scale_size_ = 1
+            scale_gpas_dg_ = 1
+            scale_sk_dg_ = 1
+            scale_gabaa_ = 1
+            scale_kir_ = 0
+            spontaneous_activity_rate = 0.25     // In Hz
+        }
+
+        // Gamma oscillations
+        if (strcmp($s1, "gamma") == 0) {
+            PP_freq_ = 35                       // Zheng et al. 
+            PP_box_nspk_  = 300
+            PP_min_invl_ = 3                    
+            PP_scale_max_invl_ = 100
+            scale_na_conductances = 2.5
+            scale_kdr_conductances = 2.5
+            scale_ka_conductances = 1
+            gbar_ht_ = 0.0004 
+            gbar_lt_ = 0
+            scale_size_ = 1
+            scale_gpas_dg_ = 1
+            scale_sk_dg_ = 1
+            scale_gabaa_ = 1
+            scale_kir_ = 0
+            spontaneous_activity_rate = 0.25     // In Hz
+        }
+    }
+
+    
+    // ########################################################################
+    //  FUNCTIONS FOR SETTING UP CELLS/INPUTS
+    // ########################################################################
+    proc make_cells() {local i
+        // Need to re-declare cell arrays with proper sizes
+        objref Gcell[ngcell]
+        objref PPSt[npp], PPSt_noise[ngcell]
+        cells = new List()
+
+        // Create populations 
+        for i=0, ngcell-1 {Gcell[i] = new GranuleCell(i,scale_na_conductances, scale_kdr_conductances, scale_ka_conductances, gbar_ht_, gbar_lt_, scale_size_, scale_gpas_dg_, scale_sk_dg_, scale_gabaa_, scale_kir_)}
+        for i=0, npp-1 	  {PPSt[i] = new PPstim(i, PP_rate_, tstop, PP_box_start_, PP_box_stop_, PP_freq_, PP_min_invl_, PP_scale_max_invl_)}
+        
+	    // [TESTING] Adding individual stims to each cell in order to simulate spontaneous activity
+	    //for i=0, npp-1    {PPSt_noise[i] = new PPstim(i, PP_rate_, tstop, PP_box_start_, PP_box_stop_)}
+        for i=0, ngcell-1    { PPSt_noise[i] = new PPstim(i, PP_rate_, tstop, 1., tstop-1, 0, 10, 10) }
+
+        // Append to cells list
+        for i = 0, ngcell-1 {cells.append(Gcell[i])} 	// cells 0-499 GCs
+        for i = 0, npp-1 {cells.append(PPSt[i])}		// 527 - xxx PP artificial cell
+	    
+        // [TESTING] Append GC spontaneous activity generators to list
+        //for i = 0, npp-1 {cells.append(PPSt_noise[i])}
+        if (spontaneous_activity_ == 1) {  
+            for i = 0, ngcell-1 { cells.append(PPSt_noise[i]) }
+        }  
+    }
+
+    proc make_input_stimulation() { local i
+        /* Creates the perforant path input stimulation objects
+        */
+        // Print update to console
+        print "\tDefining Random Generator for each PPStim object."   
+        objref pp_start, pp_noise_start
+        objref netcon_d[npp]
+	    objref netcon_d_noise[ngcell]
+
+
+        rslist = new List()
+        rs_noiselist = new List()
+
+        // Input window (box)
+        random_stream_offset_ = PP_rate_ * 1000
+        for i=0, npp-1 {
+            rs = new RandomStream(i, random_state)
+            rslist.append(rs)
+            PPSt[i].pp.noiseFromRandom(rs.r)
+            rs.r.uniform(0,1)
+            rs.start(random_state)
+        }
+
+        // artificial pulse to PPSt[i].pp in order to become active...
+        aacell pp_start = new NetStim125(.5)  
+        pp_start.interval = 1e-5
+        pp_start.number = 1
+        pp_start.start = 0
+        pp_start.forcestop = 1.
+        pp_start.noise = 1 
+
+        // assign Random Generator to init..
+        // [TODO] - Study more what is happening here
+        rs = new RandomStream(npp, random_state)				
+        return_val_ = rslist.append(rs) // save returned value in return_val_ to suppress screen output
+        return_val_ = pp_start.noiseFromRandom(rs.r)
+        return_val_ =  rs.r.negexp(1)
+        return_val_ = rs.start(random_state)
+
+        // each PPSt[i].pp needs to receive a netevent to become active...
+        //  [ TODO ] - allow for these parameters to be changed more generally
+        for i=0, npp-1 { 
+            netcon_d[i] = new NetCon(pp_start,PPSt[i].pp)
+            netcon_d[i].weight 	= 10.			 	
+            netcon_d[i].delay = 0.001
+            netcon_d[i].threshold = 10.
+        }
+
+
+        if (spontaneous_activity_ == 1) {
+            // Input window (box)
+            for i=0, ngcell-1 {
+                rs_noise = new RandomStream(i, random_state)
+                rs_noiselist.append(rs_noise)
+                PPSt_noise[i].pp.noiseFromRandom(rs_noise.r)
+                rs_noise.r.uniform(0,1)
+                rs_noise.start(random_state)
+            }
+
+
+            // artificial pulse to PPSt_noise[i].pp in order to become active...
+            aacell pp_noise_start = new NetStim125(.5)  
+            pp_noise_start.interval = 1e-5
+            pp_noise_start.number = 1
+            pp_noise_start.start = 0
+            pp_noise_start.forcestop = 1.
+            pp_noise_start.noise = 1 
+
+            // assign random number generator
+            rs_noise = new RandomStream(ngcell, random_state)				
+            return_val_ = rslist.append(rs_noise) // save returned value in return_val_ to suppress screen output
+            return_val_ = pp_noise_start.noiseFromRandom(rs_noise.r)
+            return_val_ =  rs_noise.r.negexp(1)
+            return_val_ = rs_noise.start(random_state)
+
+            // each PPSt_noise[i].pp needs to receive a netevent to become active...
+            for i=0, ngcell-1 {
+                netcon_d_noise[i] = new NetCon(pp_noise_start,PPSt_noise[i].pp)
+                netcon_d_noise[i].weight = 10.			 	
+                netcon_d_noise[i].delay = 0.001
+                netcon_d_noise[i].threshold = 10.
+            }
+        }
+        
+        
+    }
+
+    // ########################################################################
+    //  FUNCTIONS FOR MAKING NETWORK CONNECTIVITY
+    // ########################################################################
+    proc make_connections(){
+        /* Instantiates connectivity in the network
+        */
+        // Instantiate the connectivity list 
+        nclist = new List()
+
+        // Connect areas 
+        connect_pp_to_gc()
+        
+        if (spontaneous_activity_ == 1) {
+            add_spontaneous_gc_activity()
+        }
+    }
+
+    func nc_append() {	
+        // neuron connect $1 with $2.pre_list.object($3), weight $4, delay $5, threshold $6
+        // connects:
+        // cells.object($1)                             with
+        // $o1 = cells.object($2).pre_list.object($3)   and
+        // returns:
+        // netcon = $o2
+
+        if ($3 >= 0 )	{
+            //  connect_pre is function in the respective cell definition
+            cells.object($1).connect_pre(cells.object($2).pre_list.object($3),netcon)	
+            netcon.weight = $4
+            netcon.delay = $5
+            netcon.threshold = $6
+        }       
+        nclist.append(netcon)
+        return nclist.count-1
+    }
+
+    func nc_append_rec() { 
+        /* neuron connect $1 with $2.pre_list.object($3), weight $4, delay $5, threshold $6
+        // connects:
+        // cells.object($1)                             with
+        // $o1 = cells.object($2).pre_list.object($3)   and
+        // returns:
+        // netcon = $o2
+        // record events to $o7
+        */
+
+        if ($3 >= 0 )   {
+            //  connect_pre is function in the respective cell definition
+            cells.object($1).connect_pre(cells.object($2).pre_list.object($3),netcon)       
+            netcon.weight = $4
+            netcon.delay = $5
+            netcon.threshold = $6
+            netcon.record($o7)
+        }
+        nclist.append(netcon)
+        return nclist.count-1
+    }
+
+    func is_connected() {local i, c localobj net_c
+        /* Checks for preexisting connections between randomly selected cells
+        to avoid multiple contacts between same 2 cells
+        */
+        c=0
+        for i=0, nclist.count-1 {
+            net_c = nclist.object(i)
+            if (($o1 == net_c.postcell())  && ($o2 == net_c.precell())) {c=1}
+        }
+        return c
+    }
+
+    proc connect_pp_to_gc() { local i, j localobj pprec
+        /* Function that connects perforant path inputs to granule cells.
+        */
+        // Print message to indicate procedure 
+        print "Connecting PP to post-synaptic targets."
+        print "\tConnecting PP -> GC."
+
+        // Create vector that marks PP neurons that already project to a GC
+        // is this necessary? [SS]
+        pprec =  new Vector(npp, 0) 
+
+        objref vec_stim[npp]
+        for i = 0, npp-1 { vec_stim[i] = new Vector() }
+        nc_append_rec(ngcell, 0, 0, 2e-2*scale_PP_strength, 3, 10, vec_stim[0]) 
+
+    }
+
+    proc add_spontaneous_gc_activity() { local i,j 
+        /* Function that adds spontaneous hyperactivity to the granule cells
+        */
+        // Print message to indicate procedure 
+        print "Adding spontaneous GC activity."
+
+        // Objects to record inputs/noise for debugging [TODO] verify necessity...
+        //      Must be re-declared with proper value of npp
+        objref vec_stim_noise[ngcell]
+        for i = 0, ngcell-1 { vec_stim_noise[i] = new Vector() }
+
+
+        // Add spontaneous activity generator  for each individual GC
+        for i=0, ngcell-1 {
+            if ((print_stim_ == 1)) {
+		        nc_append_rec(i+ngcell+npp, i, 0, 2e-2*spontaneous_activity_strength, 0, 0, vec_stim_noise[i])
+            } else {
+	            nc_append(i+ngcell+npp, i, 0, 2e-2*spontaneous_activity_strength, 0, 0) 
+	        }            
+        }
+
+    }
+
+    
+    // ########################################################################
+    //  FUNCTIONS FOR DATA STORAGE AND PRINTING
+    // ########################################################################
+    proc update_voltage_trace_matrix() { local i 
+        /* Procedure called in every time step to add voltage of 
+            recorded cell at time t
+        */
+        VmT.append(t)
+        for i=0, (ngcell -1) {
+            VmMat[i].append( cells.object[i].soma.v(0.5))
+        }
+    }
+
+    proc convert_voltage_trace_to_spikes() { local i, j, max_id
+        /* Converts membrane potential vector to a spike train 
+        */
+        max_id = npp
+        if (  print_template == 1) { max_id = npp }
+        if (  print_Raster == 1) { max_id = ngcell -1 }
+
+        for i=0, (max_id) {
+            // Used to make a binary version of a spike train.
+            // Vector().spikebin(<data>, <thresh>)
+            //      <data> is a vector of membrane potential.
+            //      <thresh> is the voltage threshold for spike detection.
+            //      <v> is set to all zeros except at the onset of spikes 
+            //          (the first dt which the spike crosses threshold)
+            Spike[i].spikebin(VmMat[i], 0)                                    
+        }
+    }
+
+    obfunc myprecell() { localobj nil
+        /* Read out the ID of pre or precell (by Ted Carnevale)
+
+        Arguments: 
+            $o1: NetCon 
+
+        */
+        // nil points to NULLobject
+        if ($o1.precell() == nil) {
+            return $o1.pre()
+        } else {
+            return $o1.precell()
+        }
+    }
+
+    proc save_network_connections(){ local i localobj dfile
+        /* Writes network adjacency list to file
+        */
+        strdef DGNC_name_
+        dfile = new File()
+        sprint (DGNC_name_, "%s%s-%d-%d-%s.%s", datadir, "DGNC", PP_box_startid_, PP_box_nr_, idname, suffix) 
+        print "\tWriting network connections to file: ", DGNC_name_
+        dfile.wopen(DGNC_name_)
+        for i=0, nclist.count-1 {
+            dfile.printf("%s\t%s\n", myprecell(nclist.object(i)), nclist.object(i).postcell)
+        }
+        dfile.close()
+    }
+
+    proc initialize_voltage_trace_file(){			
+        /* Creates the header for the membrane voltage file
+        */
+        strdef DGVt_name_ // Voltage file name
+        efile = new File()
+
+        // [ TODO ] -- n_to_print here is not good. Needs to be an object parameter or something.
+        n_to_print = 500    
+        sprint (DGVt_name_,"%s%s-%d-%d-%s.%s", datadir, "DGVt", PP_box_startid_, PP_box_nr_, idname, suffix) 
+        print "\tWriting membrane voltage traces of all cells to file: ", DGVt_name_
+        efile.wopen(DGVt_name_)
+        efile.printf("# t\t")
+        efile.printf("\n")
+        efile.close(DGVt_name_)
+    }
+
+    proc print_voltage_traces_to_file(){ local j
+        /* Prints voltage traces to file
+
+        TODO:
+            - Have better way to implement n_to_print so that 
+                we can print not only granule cells, but still do this neatly
+        */
+        efile.aopen(DGVt_name_)
+        efile.printf("%f\t", t)
+        for i = 0, n_to_print-1 {
+            efile.printf("%f\t", cells.object[int(i*ngcell/n_to_print)].soma.v(0.5))}
+        efile.printf("\n")
+        efile.close(DGVt_name_)
+    }
+
+    proc write_spike_times_to_file() { local i, j localobj spikefile
+        strdef DGsp_name_
+        sprint (DGsp_name_,"%s%s-%d-%d-%s.%s", datadir, "DGsp", PP_box_startid_, PP_box_nr_, idname, suffix)
+        print "\tWriting spike times to file: ", DGsp_name_ 
+        spikefile = new File()
+        spikefile.wopen(DGsp_name_)
+        k = 0 
+        while (k < VmT.size) {
+            for j = 0, (ngcell-1) {
+                if(Spike[j].x[k] != 0) {
+                    // Writes out time of spike and cell id!
+                    spikefile.printf("%f\t%d\n", VmT.x[k], j)
+                }
+            }
+            k +=1
+        }
+        spikefile.close(DGsp_name_)
+    }
+
+    proc write_stimuli_to_file() {local i, j localobj stimfile, noisestimfile
+        /* Writes stimuli to file
+        */
+        stimfile = new File()
+        strdef f_name_
+        sprint (f_name_,"%s%s-%d-%d-%s.%s", datadir, "StimIn", PP_box_startid_, PP_box_nr_, idname, suffix)
+
+        print "\tWriting input trains to file: ", f_name_  
+
+        stimfile.wopen(f_name_)
+        for i=0,npp-1 {
+            for j=0,vec_stim[i].size()-1 {
+                stimfile.printf("%f\t%d\n",vec_stim[i].x[j],i)
+            }
+        }
+        stimfile.close(f_name_)
+
+        // write out noise input...
+        if ((print_stim_noise == 1) && (spontaneous_activity_ == 1)) {
+
+            noisestimfile = new File()
+            strdef f_name_noise_
+            sprint (f_name_noise_,"%s%s-%d-%d-%s.%s", datadir, "NoiseStimIn", PP_box_startid_, PP_box_nr_, idname, suffix)
+
+            noisestimfile.wopen(f_name_noise_)
+            for i=0,ngcell-1 {
+                for j=0,vec_stim_noise[i].size()-1 {
+                    noisestimfile.printf("%f\t%d\n",vec_stim_noise[i].x[j],i)
+                }
+            }
+            noisestimfile.close(f_name_noise_)
+        }
+        
+        
+    }
+
+    // ########################################################################
+    //  FUNCTIONS TO INITIALIZE AND RUN SIMULATION 
+    // ########################################################################
+    proc initialize_simulation_run() { local dtsav, temp, secsav 
+        /* Initialize a simulation run
+        
+        Arguments: 
+            - $1 : int : 100 [ TODO ] NEED TO UNDERSTAND THIS MORE. SOMETHING ABOUT SEED SETTING
+
+        */
+
+        finitialize(v_init)
+        // [ TODO ] - Figure out what these three next lines are for
+        t = -1000   // negative t step to initialize to steady state
+        dtsav = dt  // original simulation step size
+        dt= 10  	// larger step size	
+
+        // if cvode is on, turn it off to do large fixed step
+        //  [ TODO ] - Learn why
+        temp = cvode.active()		
+        if ( temp != 0 ) { cvode.active(0) }
+        while( t < -100 ) { fadvance() }
+
+        //restore cvode if reqd
+        if (temp!=0) { cvode.active(1) }
+        dt = dtsav
+        t = 0
+        
+        if ( cvode.active() ){
+            cvode.re_init()
+        } else {
+            fcurrent()
+        }
+
+        // restart number generators for PPStim
+        t = 0
+        finitialize(v_init)
+        trial_old = trial
+
+        if ($1 == 100) {
+            // Reset all Poisson inputs with the correct seed
+            for i = 0, rslist.count()-1 rslist.o(i).start(trial)
+        } else {
+            // reset int((rslist.count()-1)*(1-$1/100.)) Poisson inputs with a different seed
+            trial = trial + 1
+            for i = 0,  int((rslist.count()-1)*(1-$1/100.)) rslist.o(i).start(trial)
+
+            // reset rslist.count()-int((rslist.count()-1)*(1-$1/100.)) Poisson inputs with the correct seed
+            trial = trial_old 
+            for i = int((rslist.count()-1)*(1-$1/100.)), rslist.count()-1 rslist.o(i).start(trial)
+        }
+
+        // init noise Generators (with  seed trial_noise ...)
+        // reset all Poisson noise inputs with the trial_noise seed
+        trial = trial_noise
+        for i = 0, rs_noiselist.count()-1 rs_noiselist.o(i).start(trial)
+        trial = trial_old
+
+        VmT = new Vector()
+        for i=0, cells.count-1 {
+            VmMat[i] = new Vector()
+        }
+
+        for i=0, (ngcell -1) {
+            Spike[i] = new Vector()         // vector of spikes for each cell
+            Spike_times[i] = new Vector()   // vector of spikes for each cell
+        }
+
+        // finalize at the end 
+        // [ TODO ] - Figure out what's going on here
+        t = 0
+        finitialize(v_init)		
+        frecord_init()
+
+        // Select input pattern
+        for i=PP_box_startid_, PP_box_startid_+PP_box_nr_-1 {
+            PPSt[i].pp.start = PP_box_start_
+            PPSt[i].pp.forcestop = PP_box_stop_
+            if (PP_freq_) {
+                PPSt[i].pp.freq = PP_freq_
+                PPSt[i].pp.number = PP_box_nspk_
+                PPSt[i].pp.min_invl = PP_min_invl_
+                PPSt[i].pp.scale_max_invl = PP_scale_max_invl_
+                //print "pattern using osc"
+            } else {
+                PPSt[i].pp.nspk = PP_box_nspk_
+                PPSt[i].pp.status = 1
+                //print "pattern using box"
+            }
+        
+            
+        }
+
+        // Initialize the GC spontaneous activity generators
+        // [ TODO ] Need more general way to set the number that receive SA generators
+        //           This needs to be based on the desired frequency of spont. activity. 
+        if (spontaneous_activity_ == 1) {
+            // Rdsa_thresh is the number of granule cells that should be active 
+            //  with a single spike in the simulation window in order to achieve 
+            //  a spontaneous firing rate of `spontaneous_activity_rate`
+            rdsa_thresh = ngcell*(spontaneous_activity_rate/(1000/tstop))
+            for i=0,ngcell-1 {
+                rdsa_rv = rdsa.repick()
+                if (rdsa_rv <= rdsa_thresh) {
+                    PPSt_noise[i].pp.status = 1
+                    PPSt_noise[i].pp.start = 0.
+                    PPSt_noise[i].pp.forcestop = tstop 
+                    PPSt_noise[i].pp.nspk = 1
+                } 
+                if (rdsa_rv > rdsa_thresh) {
+                    PPSt_noise[i].pp.status = 0
+                    PPSt_noise[i].pp.start = 0.
+                    PPSt_noise[i].pp.forcestop = tstop 
+                    PPSt_noise[i].pp.nspk = 0
+                }
+            }
+        }
+    }
+
+    proc run() {local i, j  
+        // MAKE NETWORK
+        make_cells()
+        make_input_stimulation()
+        make_connections()
+
+        // INITIALIZE OPTIMIZER 
+        cvode = new CVode()
+
+        // RE-INITIALIZE DATA CONTAINERS
+        objref Spike[ntotal-1], Spike_times[ntotal-1]
+        objref VmT, VmMat[cells.count]
+
+        // RUN SIMULATION 
+        print "Running simulation."
+        
+        // Write connections to file 
+        save_network_connections()
+        for (PP_box_startid_ = 0; PP_box_startid_ <= n_patterns; PP_box_startid_ += 1 ) { 
+            initialize_simulation_run(100)
+
+            // File header voltage output file
+            if (print_Vtrace == 1) { 
+                initialize_voltage_trace_file()  
+            }      
+
+            while (t<tstop) {
+                fadvance()
+                if (print_Vtrace == 1) { 
+                    print_voltage_traces_to_file() 
+                }
+                if ((print_Raster == 1) ||  (print_template == 1))  { 
+                    update_voltage_trace_matrix() 
+                } 
+            }
+            
+            if ((print_Raster == 1) ||  (print_template == 1))  { 
+                convert_voltage_trace_to_spikes() 
+            }
+            if (print_Raster == 1) { 
+                write_spike_times_to_file() 
+            }  
+            if (print_stim_==1) {
+                write_stimuli_to_file()
+            }
+        }
+    }
+
+endtemplate GCPP

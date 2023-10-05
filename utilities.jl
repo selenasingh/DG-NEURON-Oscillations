@@ -3,7 +3,7 @@
 #       Functions for analysis of data, I/O, plotting, etc.
 #
 #######################################################################
-using DataFrames, CSV, Plots, PyCall, LsqFit, LaTeXStrings, Statistics
+using DataFrames, CSV, Plots, PyCall, LsqFit, LaTeXStrings, Statistics, DataStructures, FourierAnalysis
 np = pyimport("numpy")
 ss = pyimport("scipy.stats")
 
@@ -20,7 +20,7 @@ function create_directories_if_not_exist()
         mkdir("figures")
     end
 
-    for d ∈ ["raster-plots", "pattern-separation", "voltage-tracings", "fi-curves"]
+    for d ∈ ["raster-plots", "pattern-separation", "voltage-tracings", "fi-curves", "lfp"]
         if !(d ∈ readdir("figures"))
             mkdir("figures/"*d)
         end
@@ -48,7 +48,7 @@ function load_spike_files(
     patterns::Union{UnitRange{Int64}, Vector{Int64}}, 
     model_label::String,
     neuron_ids::Dict;
-    neurons_per_pattern::Int64=6, 
+    neurons_per_pattern::Int64=6, #
     data_dir::String="data/dgnetwork/")
 
     df = DataFrame()
@@ -103,7 +103,7 @@ function spike_train_correlation(
     n_neurons::Int64;
     delta::Int64=20, 
     n_bins::Int64=1, 
-    duration::Float64=200.0)
+    duration::Float64=2000.0)
     
     # Create kernel
     tri_rng = collect(1:round(Int64, delta/n_bins))
@@ -139,7 +139,7 @@ function pattern_separation_curve(
     n_granule_cells::Int64;
     delta::Int64=20,
     n_bins::Int64=1,
-    duration::Float64=200.0)
+    duration::Float64=2000.0)
 
     out = DataFrame()
     n_patterns = unique(spike_times.Pattern) |> length
@@ -184,6 +184,18 @@ function fit_power_law(x::Vector, y::Vector)
     return f
 end
 
+function compute_auc(x::Vector, y::Vector)
+    # Clip for tractability
+    x = max.(x, 0.0001)
+    y = max.(y, 0.0001)
+
+    @. model(x, w) = w[1] + (1-w[1])*(x^w[2])
+    res = curve_fit(model, x, y, [0., 1.])
+    a, b = res.param
+    auc = - ((2*a*b) - b + 1)/(2*(1+b))
+    return auc
+end
+
 #######################################################################
 #   FUNCTIONS FOR PLOTTING
 #######################################################################
@@ -195,7 +207,7 @@ Returns a raster plot
 """
 function raster_plot(
     spikes::DataFrame; 
-    xlims::Vector=[0,200],
+    xlims::Vector=[0,2000],
     xlab::String="Time (ms)",
     ylab::String="Neuron ID"
     )

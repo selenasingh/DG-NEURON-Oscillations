@@ -5,7 +5,7 @@ This is a reimplementation of the dentate gyrus model from which the following p
 1. Santhakumar et al. (2005) 
 2. Yim et al. (2015) 
 
-Our model is modified primarily from the Yim et al. (2005) implementation. Changes are listed at the end of this file.  
+Our model is modified primarily from the Yim et al. (2015) implementation. Changes are listed at the end of this file.  
 
 ## Contributing 
 
@@ -60,3 +60,18 @@ Here we do not list all specific changes implemented, but rather a high-level ov
 3. Development of functions to "transform" network in order to test different effects
 4. Analysis code written in Julia  
 5. Added capability for spontaneous action potential discharge of granule cells 
+6. Added option for oscillatory perforant path inputs at different frequency bands
+
+## For experiments in Singh et al., 2023, "Granule cells perform frequency-dependent pattern separation in a computational model of the dentate gyrus". 
+
+1. Fully intact, tuned model producing base "U"-shaped curve can be simulated by running `run.sh`.
+2. Lesion studies currently will require direct manipulation of `DentateGyrus.hoc`. 
+	- Set the following parameter values to 0 in the `set_connectivity_params()` , save DentateGyrus.hoc, and re-run `run.sh`.
+		- feedforward inhibition: scale_PP2BC_strength
+		- feedback inhibition: scale_GC2BC_strength
+		- feedforward and feedback: scale_PP2BC_strength and scale_GC2BC_strength
+		- all basket cell inhibition: scale_BC2GC_strength
+		- hipp cell inhibition: scale_HC2GC_strength
+		- mossy cell excitation: scale_MC2GC_strength
+3. Single neuron experiments demonstrating "U"-shaped ISI relationship can be simulated by running `run_singlegc.sh`. Analysis can then be completed using `gcpp_analysis.ipynb`. 
+4. Single-cell tuning for HIPP cells and MCs are in `optimize_HCs.py` and `optimize_MCs.py`

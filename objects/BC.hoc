@@ -104,18 +104,27 @@ proc temp() {
     
 	forsec all {
 		insert ccanl
-	catau_ccanl = 10
-	caiinf_ccanl = 5.e-6
+            catau_ccanl = 10
+            caiinf_ccanl = 5.e-6
 		insert ka
-	gkabar_ka=0.00015
+            gkabar_ka=0.00015
 		insert nca  
-	gncabar_nca=0.0008   
+            gncabar_nca=0.0008
 		insert lca 
-	glcabar_lca=0.005
+            glcabar_lca=0.005
 		insert sk
-	gskbar_sk=0.000002
+            gskbar_sk=0.000002
 		insert bk
-	gkbar_bk=0.0002
+            gkbar_bk=0.0002
+	    insert ichan2
+	        vshiftma_ichan2 = 43                           // value Yim et al. 2015
+            vshiftmb_ichan2 = 15                           // value Yim et al. 2015
+            vshiftha_ichan2 = 65                             // value Yim et al. 2015
+            vshifthb_ichan2 = 12.5                          // value Yim et al. 2015
+            vshiftnfa_ichan2 = 18                           // value Yim et al. 2015
+            vshiftnfb_ichan2 = 43                           // value Yim et al. 2015
+            vshiftnsa_ichan2 = 30                        // value Yim et al. 2015
+            vshiftnsb_ichan2 = 55                         // value Yim et al. 2015
 	}
 
 	soma {insert ichan2  

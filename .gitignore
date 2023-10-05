@@ -2,9 +2,13 @@
 mods/*.c
 mods/*.o
 
-x86_64/*
+arm64/*
 __pycache__/*
 
 data/*
 figures/*
 
+testosc.mod
+.DS_Store
+testdicts.py
+LFP.ipynb
